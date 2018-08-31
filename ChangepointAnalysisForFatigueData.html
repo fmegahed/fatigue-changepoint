@@ -11,7 +11,7 @@
 
 <meta name="author" content="Amir Baghdadi, Fadel Megahed, and Lora Cavuoto" />
 
-<meta name="date" content="2018-08-30" />
+<meta name="date" content="2018-08-31" />
 
 <title>Changepoint Analysis For Fatigue Data</title>
 
@@ -224,7 +224,7 @@ div.tocify {
 
 <h1 class="title toc-ignore">Changepoint Analysis For Fatigue Data</h1>
 <h4 class="author"><em>Amir Baghdadi, Fadel Megahed, and Lora Cavuoto</em></h4>
-<h4 class="date"><em>August 30, 2018</em></h4>
+<h4 class="date"><em>August 31, 2018</em></h4>
 
 </div>
 
@@ -238,21 +238,21 @@ div.tocify {
 <p>The snippet below documents the list of <strong>R</strong> libraries that were used in this research. For convenience, we used the pacman package since it allows for installing/loading the needed libraries in one step.</p>
 <pre class="r"><code>cat(&quot;\014&quot;) # clear console</code></pre>
 <p></p>
-<pre class="r"><code>rm(list=ls()) # clear global environment
+<pre class="r"><code>rm(list = ls()) # clear global environment
 graphics.off() # close all graphics
 library(pacman) # needs to be installed first
-p_load(R.matlab,
-       plotly,extrafont,grDevices,
-       dplyr, stringr,tidyverse)</code></pre>
+p_load(R.matlab,plotly,extrafont,grDevices,
+       dplyr,stringr,tidyverse)</code></pre>
 <p>In the snippet below, we extract the 15 ``.mat&quot; files in the <em>GitHub</em> repository. Then, we perform several transformation steps: (a) extracting the data for the first three columns in the matlab arrays; and (b) computing three kinematic features from the data corresponding to these columns. Due to the differences between Matlab and R, this requires two nested <em>for</em> loops. The outer loop increments over the number of subjects, while the inner loop increments based on the different number of rows of data for each subject. Please see the comments within the code chunk for more details.</p>
-<pre class="r"><code>subject_files &lt;- seq(1,15)
-subject_heights &lt;- c(1.71, 1.77, 1.71, 1.59, 1.69, 1.63, 1.60, 1.71, 1.67, 1.78, 1.68, 1.55, 1.83, 1.81, 1.89)
+<pre class="r"><code>subject_files &lt;- seq(1, 15)
+subject_heights &lt;- c(1.71, 1.77, 1.71, 1.59, 1.69,
+                     1.63, 1.60, 1.71, 1.67, 1.78,
+                     1.68, 1.55, 1.83, 1.81, 1.89)
 
 # Initilizing a df for summary data on participants
-summary_df &lt;- as.data.frame(matrix(nrow=15,ncol = 9))
-colnames(summary_df) &lt;- c(&quot;Subject.Num&quot;,
-                          &quot;num.rows&quot;,&quot;num.cols&quot;,
-                          &quot;mean.scaled.step.len&quot;,
+summary_df &lt;- data.frame(matrix(nrow = 15, ncol = 9))
+colnames(summary_df) &lt;- c(&quot;Subject.Num&quot;, &quot;num.rows&quot;,
+                          &quot;num.cols&quot;, &quot;mean.scaled.step.len&quot;,
                           &quot;sd.scaled.step.len&quot;,
                           &quot;mean.scaled.step.height&quot;,
                           &quot;sd.scaled.step.height&quot;,
@@ -263,278 +263,53 @@ for (i in 1:length(subject_files)) {
   # Reading the .mat files from GitHub
   raw_data &lt;- readMat(paste0(&quot;https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/Raw/Subject&quot;,subject_files[i],&quot;.mat?raw=true&quot;))
   # Compute the number of cells, and rows in each structered matrix
-  raw_data_size &lt;- lengths(raw_data) # num of cells 
-  num_rows &lt;- raw_data_size/17 # all data had 17 cols
+  raw_data_size &lt;- lengths(raw_data) # num of cells
+  num_rows &lt;- raw_data_size / 17 # all data had 17 cols
   # Initilizing the six lists needed for storing the data (we keep track of the top 3 for error checking)
-  position_x &lt;- vector(&quot;list&quot;, length = num_rows) 
-  position_y &lt;- vector(&quot;list&quot;, length = num_rows) 
-  step_time &lt;- vector(&quot;list&quot;, length = num_rows) 
-  step_length &lt;- vector(&quot;list&quot;, length = num_rows) 
-  step_height &lt;- vector(&quot;list&quot;, length = num_rows) 
+  position_x &lt;- vector(&quot;list&quot;, length = num_rows)
+  position_y &lt;- vector(&quot;list&quot;, length = num_rows)
+  step_time &lt;- vector(&quot;list&quot;, length = num_rows)
+  step_length &lt;- vector(&quot;list&quot;, length = num_rows)
+  step_height &lt;- vector(&quot;list&quot;, length = num_rows)
   step_duration &lt;- vector(&quot;list&quot;, length = num_rows)
   
   # Following for loop is needed since R reads the structured array as a nested list. The list containing the data is called &quot;M.i.k&quot; and it transforms/reads the original array --&gt; rowise. This means that our first three features (with the same timestamp) are always seperated with a distance equal to the total number of rows
   for (j in 1:num_rows) {
-    position_x[[j]] &lt;- raw_data[[&quot;M.i.k&quot;]][[j]] 
-    position_y[[j]] &lt;- raw_data[[&quot;M.i.k&quot;]][[num_rows+j]]
-    step_time[[j]] &lt;- raw_data[[&quot;M.i.k&quot;]][[2*num_rows+j]]
+    position_x[[j]] &lt;- raw_data[[&quot;M.i.k&quot;]][[j]]
+    position_y[[j]] &lt;- raw_data[[&quot;M.i.k&quot;]][[num_rows + j]]
+    step_time[[j]] &lt;- raw_data[[&quot;M.i.k&quot;]][[2 * num_rows + j]]
     # Computing the three needed kinematic features
-    step_length[[j]] &lt;- range(position_x[[j]])[2]-range(position_x[[j]])[1]
-    step_height[[j]] &lt;- range(position_y[[j]])[2]-range(position_y[[j]])[1]
-    step_duration[[j]] &lt;- range(step_time[[j]])[2]-range(step_time[[j]])[1]
-  } 
-
-  assign(paste0(&quot;subject&quot;,i,&quot;_features&quot;),
-         data.frame(scaled.step.len= unlist(step_length)/subject_heights[i], scaled.step.height=unlist(step_height)/subject_heights[i], step.duration=unlist(step_duration)))
-
+    step_length[[j]] &lt;-
+      range(position_x[[j]])[2] - range(position_x[[j]])[1]
+    step_height[[j]] &lt;-
+      range(position_y[[j]])[2] - range(position_y[[j]])[1]
+    step_duration[[j]] &lt;-
+      range(step_time[[j]])[2] - range(step_time[[j]])[1]
+  }
+  
+  assign(paste0(&quot;subject&quot;, i, &quot;_features&quot;), data.frame(scaled.step.len = unlist(step_length)/subject_heights[i], scaled.step.height = unlist(step_height) / subject_heights[i], step.duration = unlist(step_duration)))
+  
   # Creating a Summary Data Frame
-df_name &lt;- paste0(&quot;subject&quot;,i,&quot;_features&quot;)
-summary_df[i,1] &lt;- df_name
-summary_df[i,2] &lt;- get(df_name) %&gt;% nrow() 
-summary_df[i,3] &lt;- get(df_name) %&gt;% ncol()
-summary_df[i,4] &lt;- get(df_name)[,1] %&gt;% mean()
-summary_df[i,5] &lt;- get(df_name)[,1] %&gt;% sd()
-summary_df[i,6] &lt;- get(df_name)[,2] %&gt;% mean()
-summary_df[i,7] &lt;- get(df_name)[,2] %&gt;% sd()
-summary_df[i,8] &lt;- get(df_name)[,3] %&gt;% mean()
-summary_df[i,9] &lt;- get(df_name)[,3] %&gt;% sd()
+  df_name &lt;- paste0(&quot;subject&quot;, i, &quot;_features&quot;)
+  summary_df[i, 1] &lt;- df_name
+  summary_df[i, 2] &lt;- get(df_name) %&gt;% nrow()
+  summary_df[i, 3] &lt;- get(df_name) %&gt;% ncol()
+  summary_df[i, 4] &lt;- get(df_name)[, 1] %&gt;% mean() %&gt;% round(digits = 4)
+  summary_df[i, 5] &lt;- get(df_name)[, 1] %&gt;% sd() %&gt;% round(digits = 4)
+  summary_df[i, 6] &lt;- get(df_name)[, 2] %&gt;% mean() %&gt;% round(digits = 4)
+  summary_df[i, 7] &lt;- get(df_name)[, 2] %&gt;% sd() %&gt;% round(digits = 4)
+  summary_df[i, 8] &lt;- get(df_name)[, 3] %&gt;% mean() %&gt;% round(digits = 4)
+  summary_df[i, 9] &lt;- get(df_name)[, 3] %&gt;% sd() %&gt;% round(digits = 4)
 }
-print(summary_df)</code></pre>
-<pre><code>##           Subject.Num num.rows num.cols mean.scaled.step.len
-## 1   subject1_features     2317        3            0.3697982
-## 2   subject2_features     5862        3            0.3058567
-## 3   subject3_features     3991        3            0.2075735
-## 4   subject4_features     8769        3            0.2241703
-## 5   subject5_features     5327        3            0.1445631
-## 6   subject6_features     7157        3            0.1066470
-## 7   subject7_features     4402        3            0.2281637
-## 8   subject8_features     5554        3            0.3682826
-## 9   subject9_features     7622        3            0.1578811
-## 10 subject10_features     8018        3            0.2502209
-## 11 subject11_features     8386        3            0.2670285
-## 12 subject12_features     8195        3            0.3182366
-## 13 subject13_features     7705        3            0.1915885
-## 14 subject14_features     3440        3            0.4652139
-## 15 subject15_features     7397        3            0.3246890
-##    sd.scaled.step.len mean.scaled.step.height sd.scaled.step.height
-## 1          0.09066350              0.08593259            0.03516763
-## 2          0.09096452              0.09850550            0.03352727
-## 3          0.09930662              0.07637087            0.02428016
-## 4          0.12539166              0.09539673            0.04166227
-## 5          0.08048272              0.07155054            0.05454192
-## 6          0.08033278              0.04129839            0.02250414
-## 7          0.11437544              0.07591660            0.03502142
-## 8          0.17506293              0.07921691            0.03613298
-## 9          0.09142865              0.08206617            0.04741092
-## 10         0.09672692              0.09128211            0.03598378
-## 11         0.09424995              0.09942753            0.03523579
-## 12         0.12734788              0.10176747            0.04671661
-## 13         0.08914967              0.04800958            0.02272702
-## 14         0.21162572              0.10869983            0.08285521
-## 15         0.09208839              0.09022514            0.02388701
-##    mean.step.duration sd.step.duartion
-## 1           1.2981833        0.1459300
-## 2           1.0223020        0.1458810
-## 3           1.2433248        0.1611887
-## 4           1.0419206        0.1895101
-## 5           1.0917114        0.1973434
-## 6           0.8146963        0.1968583
-## 7           1.1600196        0.1672282
-## 8           1.1876435        0.1731325
-## 9           1.1523796        0.1859525
-## 10          1.0146409        0.1671581
-## 11          1.0859804        0.1421864
-## 12          1.0329494        0.1937501
-## 13          1.1922909        0.1815929
-## 14          1.4047136        0.2443313
-## 15          1.0867529        0.1129121</code></pre>
-<p>Based on the above analyses, we save the generated data into an R.data file, which can be accessed by clicking on: The data from the above analysis is saved under <a href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/FeatureGeneration.RData">FeatureGeneration.RData</a>.</p>
-<pre class="r"><code>rm(raw_data,raw_data_size,i,j,num_rows,subject_files,subject_heights)
+summary_df</code></pre>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":["Subject.Num"],"name":[1],"type":["chr"],"align":["left"]},{"label":["num.rows"],"name":[2],"type":["int"],"align":["right"]},{"label":["num.cols"],"name":[3],"type":["int"],"align":["right"]},{"label":["mean.scaled.step.len"],"name":[4],"type":["dbl"],"align":["right"]},{"label":["sd.scaled.step.len"],"name":[5],"type":["dbl"],"align":["right"]},{"label":["mean.scaled.step.height"],"name":[6],"type":["dbl"],"align":["right"]},{"label":["sd.scaled.step.height"],"name":[7],"type":["dbl"],"align":["right"]},{"label":["mean.step.duration"],"name":[8],"type":["dbl"],"align":["right"]},{"label":["sd.step.duartion"],"name":[9],"type":["dbl"],"align":["right"]}],"data":[{"1":"subject1_features","2":"2317","3":"3","4":"0.3698","5":"0.0907","6":"0.0859","7":"0.0352","8":"1.2982","9":"0.1459"},{"1":"subject2_features","2":"5862","3":"3","4":"0.3059","5":"0.0910","6":"0.0985","7":"0.0335","8":"1.0223","9":"0.1459"},{"1":"subject3_features","2":"3991","3":"3","4":"0.2076","5":"0.0993","6":"0.0764","7":"0.0243","8":"1.2433","9":"0.1612"},{"1":"subject4_features","2":"8769","3":"3","4":"0.2242","5":"0.1254","6":"0.0954","7":"0.0417","8":"1.0419","9":"0.1895"},{"1":"subject5_features","2":"5327","3":"3","4":"0.1446","5":"0.0805","6":"0.0716","7":"0.0545","8":"1.0917","9":"0.1973"},{"1":"subject6_features","2":"7157","3":"3","4":"0.1066","5":"0.0803","6":"0.0413","7":"0.0225","8":"0.8147","9":"0.1969"},{"1":"subject7_features","2":"4402","3":"3","4":"0.2282","5":"0.1144","6":"0.0759","7":"0.0350","8":"1.1600","9":"0.1672"},{"1":"subject8_features","2":"5554","3":"3","4":"0.3683","5":"0.1751","6":"0.0792","7":"0.0361","8":"1.1876","9":"0.1731"},{"1":"subject9_features","2":"7622","3":"3","4":"0.1579","5":"0.0914","6":"0.0821","7":"0.0474","8":"1.1524","9":"0.1860"},{"1":"subject10_features","2":"8018","3":"3","4":"0.2502","5":"0.0967","6":"0.0913","7":"0.0360","8":"1.0146","9":"0.1672"},{"1":"subject11_features","2":"8386","3":"3","4":"0.2670","5":"0.0942","6":"0.0994","7":"0.0352","8":"1.0860","9":"0.1422"},{"1":"subject12_features","2":"8195","3":"3","4":"0.3182","5":"0.1273","6":"0.1018","7":"0.0467","8":"1.0329","9":"0.1938"},{"1":"subject13_features","2":"7705","3":"3","4":"0.1916","5":"0.0891","6":"0.0480","7":"0.0227","8":"1.1923","9":"0.1816"},{"1":"subject14_features","2":"3440","3":"3","4":"0.4652","5":"0.2116","6":"0.1087","7":"0.0829","8":"1.4047","9":"0.2443"},{"1":"subject15_features","2":"7397","3":"3","4":"0.3247","5":"0.0921","6":"0.0902","7":"0.0239","8":"1.0868","9":"0.1129"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+<pre class="r"><code>rm(raw_data, raw_data_size, i, j, num_rows, subject_files,   subject_heights)
 save.image(file = &quot;./Data/RGenerated/FeatureGeneration.RData&quot;)</code></pre>
-<pre class="r"><code>load(file = &quot;./Data/RGenerated/FeatureGeneration.RData&quot;)
-knitr::kable(summary_df)</code></pre>
-<table>
-<thead>
-<tr class="header">
-<th align="left">Subject.Num</th>
-<th align="right">num.rows</th>
-<th align="right">num.cols</th>
-<th align="right">mean.scaled.step.len</th>
-<th align="right">sd.scaled.step.len</th>
-<th align="right">mean.scaled.step.height</th>
-<th align="right">sd.scaled.step.height</th>
-<th align="right">mean.step.duration</th>
-<th align="right">sd.step.duartion</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="left">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-</tr>
-<tr class="even">
-<td align="left">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-</tr>
-<tr class="odd">
-<td align="left">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-</tr>
-<tr class="even">
-<td align="left">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-</tr>
-<tr class="odd">
-<td align="left">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-</tr>
-<tr class="even">
-<td align="left">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-</tr>
-<tr class="odd">
-<td align="left">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-</tr>
-<tr class="even">
-<td align="left">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-</tr>
-<tr class="odd">
-<td align="left">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-</tr>
-<tr class="even">
-<td align="left">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-</tr>
-<tr class="odd">
-<td align="left">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-</tr>
-<tr class="even">
-<td align="left">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-</tr>
-<tr class="odd">
-<td align="left">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-</tr>
-<tr class="even">
-<td align="left">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-<td align="right">NA</td>
-</tr>
-<tr class="odd">
-<td align="left">subject15_features</td>
-<td align="right">7397</td>
-<td align="right">3</td>
-<td align="right">0.324689</td>
-<td align="right">0.0920884</td>
-<td align="right">0.0902251</td>
-<td align="right">0.023887</td>
-<td align="right">1.086753</td>
-<td align="right">0.1129121</td>
-</tr>
-</tbody>
-</table>
+<p>Based on the above analyses, we saved the generated data into an R.data file, which can be accessed by clicking on: The data from the above analysis is saved under <a href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/FeatureGeneration.RData">FeatureGeneration.RData</a>.</p>
 </div>
 </div>
 
