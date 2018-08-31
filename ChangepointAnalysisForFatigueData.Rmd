@@ -14,14 +14,15 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-In this paper, we attempt to examine whether the use of change-point analysis techniques is appropriate for detecting fatigue based on data captured from wearable sensors. As such, we perform a **secondary data analysis** to the data generated in:
-
-Baghdadi, A., Megahed, F. M., Esfahani, E. T., & Cavuoto, L. A. (2018). A machine learning approach to detect changes in gait parameters following a fatiguing occupational task. *Ergonomics*, 1-14.
+In this paper, we attempt to examine whether the use of change-point analysis techniques is appropriate for detecting fatigue based on data captured from wearable sensors. As such, we perform a **secondary data analysis** to the data generated in: [Baghdadi et al., 2018](https://www.tandfonline.com/doi/full/10.1080/00140139.2018.1442936). The reader should note that their raw data was preprocessed using:  
+  (A) *Kalman Filter:* Used to process the raw data from sensors to: (i) estimate the spatial orientation of the body with respect to the global reference frame, and (ii) to estimate the kinematics of motion.  
+  (B) * Segmentation:* The motion segments where then segmented using an algorithm that assumes the existence of two peaks in the translational acceleration of the gait cycle. This assumption was justified based on the results of [Tongen and Wunderlich, 2010](https://www.cambridge.org/core/books/mathematics-and-sports/biomechanics-of-running-and-walking/0DC334F72A56527FC4517B297923E9D3) as well as the authors' preliminary analyses.  
 
 # Extracting the Data and Generating the Features 
 
 ## Initilization, loading the datasets from Baghdadi et al. (2018), and computing three kinematic features
-The snippet below documents the list of **R** libraries that were used in this research. For convenience, we used the pacman package since it allows for installing/loading the needed libraries in one step. 
+The snippet below documents the list of **R** libraries that were used in this research. For convenience, we used the pacman package since it allows for installing/loading the needed libraries in one step.
+
 ```{r, load_libraries, message=FALSE, cache=TRUE, error=FALSE}
 cat("\014") # clear console
 rm(list = ls()) # clear global environment
@@ -31,7 +32,7 @@ p_load(R.matlab,plotly,extrafont,grDevices,
        dplyr,stringr,tidyverse)
 ```
 
-In the snippet below, we extract the 15 ``.mat" files in the *GitHub* repository. Then, we perform several transformation steps: (a) extracting the data for the first three columns in the matlab arrays; and (b) computing three kinematic features from the data corresponding to these columns. Due to the differences between Matlab and R, this requires two nested *for* loops. The outer loop increments over the number of subjects, while the inner loop increments based on the different number of rows of data for each subject. Please see the comments within the code chunk for more details.
+In the snippet below, we extract the 15 ".mat" files in the [GitHub repository](https://github.com/fmegahed/fatigue-changepoint/tree/master/Data/Raw) (where we loaded the data to allow for the reproduction of our work). Then, we perform several transformation steps: (a) extracting the data for the first three columns in the matlab arrays; and (b) computing three kinematic features from the data corresponding to these columns. Due to the differences between Matlab and R, this requires two nested *for* loops. The outer loop increments over the number of subjects, while the inner loop increments based on the different number of rows of data for each subject. Please see the comments within the code chunk for more details. 
 
 ```{r load_data, cache=TRUE}
 subject_files <- seq(1, 15)
@@ -56,6 +57,7 @@ for (i in 1:length(subject_files)) {
   raw_data_size <- lengths(raw_data) # num of cells
   num_rows <- raw_data_size / 17 # all data had 17 cols
   # Initilizing the six lists needed for storing the data (we keep track of the top 3 for error checking)
+  time_stamp <- vector("list", length = num_rows)
   position_x <- vector("list", length = num_rows)
   position_y <- vector("list", length = num_rows)
   step_time <- vector("list", length = num_rows)
@@ -68,6 +70,7 @@ for (i in 1:length(subject_files)) {
     position_x[[j]] <- raw_data[["M.i.k"]][[j]]
     position_y[[j]] <- raw_data[["M.i.k"]][[num_rows + j]]
     step_time[[j]] <- raw_data[["M.i.k"]][[2 * num_rows + j]]
+    dataholder <- raw_data[["M.i.k"]][[16 * num_rows + j]] # data holder for time
     # Computing the three needed kinematic features
     step_length[[j]] <-
       range(position_x[[j]])[2] - range(position_x[[j]])[1]
@@ -75,9 +78,17 @@ for (i in 1:length(subject_files)) {
       range(position_y[[j]])[2] - range(position_y[[j]])[1]
     step_duration[[j]] <-
       range(step_time[[j]])[2] - range(step_time[[j]])[1]
+    time_stamp[[j]] <- lapply(dataholder, mean)# using mean time of step as a time stamp
   }
   
-  assign(paste0("subject", i, "_features"), data.frame(scaled.step.len = unlist(step_length)/subject_heights[i], scaled.step.height = unlist(step_height) / subject_heights[i], step.duration = unlist(step_duration)))
+  # Scaling and creating one data frame per subject
+  assign(paste0("subject", i, "_features"), 
+         data.frame(time.from.start = unlist(time_stamp), 
+                    scaled.step.len = unlist(step_length)/subject_heights[i], 
+                    scaled.step.height = unlist(step_height) / subject_heights[i], 
+                    step.duration = unlist(step_duration)
+                    )
+         )
   
   # Creating a Summary Data Frame
   df_name <- paste0("subject", i, "_features")
@@ -91,9 +102,19 @@ for (i in 1:length(subject_files)) {
   summary_df[i, 8] <- get(df_name)[, 3] %>% mean() %>% round(digits = 4)
   summary_df[i, 9] <- get(df_name)[, 3] %>% sd() %>% round(digits = 4)
 }
+# Printing the top six rows of Subject 4's data as an example
+head(subject4_features) %>% round(digits = 3)
+
+# A Summary of the features for all 15 participants
 summary_df
-rm(raw_data, raw_data_size, i, j, num_rows, subject_files,   subject_heights)
+rm(raw_data, raw_data_size, i, j, num_rows, 
+   dataholder, subject_files, subject_heights)
 save.image(file = "./Data/RGenerated/FeatureGeneration.RData")
 ```
-Based on the above analyses, we saved the generated data into an R.data file, which can be accessed by clicking on: The data from the above analysis is saved under [FeatureGeneration.RData](https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/FeatureGeneration.RData).
 
+Based on the analysis above, there are **three observations** to be made. *First*, we scaled the step length and height based on the subject's height. This in essence allows us to capture the steps as a percentage of the person's height. This reduces the between subject variablity in the data and is supported by the seminal work of [Oberg et al., 1993](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.473.947&rep=rep1&type=pdf). *Second*, we showed the first six rows from Subject 4 to provide the reader with some insights into the sampling frequeny (after the preprocessing done in [Baghdadi et al. 2018](https://www.tandfonline.com/doi/abs/10.1080/00140139.2018.1442936)). Note that the kinematic features are computed from the sensor channels provided in their paper. *Third*, we saved the generated data into an R.data file, which can be accessed by clicking on:  [FeatureGeneration.RData](https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/FeatureGeneration.RData). We hope that this saved data allows other researchers to reproduce and/or build on our work.
+
+## Detecting and Removing Outliers
+In this task, we examined several approaches for *outlier detection*. We hypothesize (which seems reasonable based on visualizing the data) that these outliers constitue faulty sensor readings (since they are not sustained), and thus, we remove this data prior to any further analysis. In the subsections below, we apply different outlier detection/removal algorithms and provide the corresponding visualizatios to the data. Based on the visualizations, we implement **say the name of which approach**. 
+
+### Using the whiskers of a Box Plot
