@@ -22,21 +22,19 @@ Baghdadi, A., Megahed, F. M., Esfahani, E. T., & Cavuoto, L. A. (2018). A machin
 
 ## Initilization, loading the datasets from Baghdadi et al. (2018), and computing three kinematic features
 The snippet below documents the list of **R** libraries that were used in this research. For convenience, we used the pacman package since it allows for installing/loading the needed libraries in one step. 
-```{r, load_libraries, message=FALSE,cache=TRUE}
+```{r, load_libraries, message=FALSE, cache=TRUE, error=FALSE}
 cat("\014") # clear console
 rm(list=ls()) # clear global environment
 graphics.off() # close all graphics
 library(pacman) # needs to be installed first
 p_load(R.matlab,
        plotly,extrafont,grDevices,
-       dplyr, stringr,tidyverse,
-       rstudioapi) # Assuming R Studio is the IDE
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # only tested in RStudio environment 
+       dplyr, stringr,tidyverse)
 ```
 
 In the snippet below, we extract the 15 ``.mat" files in the *GitHub* repository. Then, we perform several transformation steps: (a) extracting the data for the first three columns in the matlab arrays; and (b) computing three kinematic features from the data corresponding to these columns. Due to the differences between Matlab and R, this requires two nested *for* loops. The outer loop increments over the number of subjects, while the inner loop increments based on the different number of rows of data for each subject. Please see the comments within the code chunk for more details.
 
-```{r load_data, warning=FALSE, cache=TRUE}
+```{r load_data, cache=TRUE}
 subject_files <- seq(1,15)
 subject_heights <- c(1.71, 1.77, 1.71, 1.59, 1.69, 1.63, 1.60, 1.71, 1.67, 1.78, 1.68, 1.55, 1.83, 1.81, 1.89)
 
@@ -68,9 +66,10 @@ for (i in 1:length(subject_files)) {
          data.frame(scaled.step.len= unlist(step_length)/subject_heights[i], scaled.step.height=unlist(step_height)/subject_heights[i], step.duration=unlist(step_duration)))
 }
 ```
-Based on the above analyses, we save the generated data into an R.data file.
+Based on the above analyses, we save the generated data into an R.data file, which can be accessed by clicking on: The data from the above analysis is saved under [FeatureGeneration.RData](https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/FeatureGeneration.RData).
 ```{r save_kinematic_data, warning=FALSE, cache=TRUE}
 rm(raw_data,raw_data_size,i,j,num_rows,subject_files,subject_heights)
-save.image(file = "RGenerated/FeatureGeneration.RData")
+save.image(file = "./Data/RGenerated/FeatureGeneration.RData")
 ```
+
 
