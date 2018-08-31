@@ -1,0 +1,15 @@
+base
+pacman
+R.matlab
+ggplot2
+plotly
+extrafont
+dplyr
+stringr
+tidyverse
+tibble
+tidyr
+readr
+purrr
+forcats
+rstudioapi
