@@ -38,6 +38,17 @@ In the snippet below, we extract the 15 ``.mat" files in the *GitHub* repository
 subject_files <- seq(1,15)
 subject_heights <- c(1.71, 1.77, 1.71, 1.59, 1.69, 1.63, 1.60, 1.71, 1.67, 1.78, 1.68, 1.55, 1.83, 1.81, 1.89)
 
+# Initilizing a df for summary data on participants
+summary_df <- as.data.frame(matrix(nrow=15,ncol = 9))
+colnames(summary_df) <- c("Subject.Num",
+                          "num.rows","num.cols",
+                          "mean.scaled.step.len",
+                          "sd.scaled.step.len",
+                          "mean.scaled.step.height",
+                          "sd.scaled.step.height",
+                          "mean.step.duration",
+                          "sd.step.duartion")
+
 for (i in 1:length(subject_files)) {
   # Reading the .mat files from GitHub
   raw_data <- readMat(paste0("https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/Raw/Subject",subject_files[i],".mat?raw=true"))
@@ -50,7 +61,8 @@ for (i in 1:length(subject_files)) {
   step_time <- vector("list", length = num_rows) 
   step_length <- vector("list", length = num_rows) 
   step_height <- vector("list", length = num_rows) 
-  step_duration <- vector("list", length = num_rows) 
+  step_duration <- vector("list", length = num_rows)
+  
   # Following for loop is needed since R reads the structured array as a nested list. The list containing the data is called "M.i.k" and it transforms/reads the original array --> rowise. This means that our first three features (with the same timestamp) are always seperated with a distance equal to the total number of rows
   for (j in 1:num_rows) {
     position_x[[j]] <- raw_data[["M.i.k"]][[j]] 
@@ -64,7 +76,20 @@ for (i in 1:length(subject_files)) {
 
   assign(paste0("subject",i,"_features"),
          data.frame(scaled.step.len= unlist(step_length)/subject_heights[i], scaled.step.height=unlist(step_height)/subject_heights[i], step.duration=unlist(step_duration)))
+
+  # Creating a Summary Data Frame
+df_name <- paste0("subject",i,"_features")
+summary_df[i,1] <- df_name
+summary_df[i,2] <- get(df_name) %>% nrow() 
+summary_df[i,3] <- get(df_name) %>% ncol()
+summary_df[i,4] <- get(df_name)[,1] %>% mean()
+summary_df[i,5] <- get(df_name)[,1] %>% sd()
+summary_df[i,6] <- get(df_name)[,2] %>% mean()
+summary_df[i,7] <- get(df_name)[,2] %>% sd()
+summary_df[i,8] <- get(df_name)[,3] %>% mean()
+summary_df[i,9] <- get(df_name)[,3] %>% sd()
 }
+knitr::kable(summary_df)(summary_df)
 ```
 Based on the above analyses, we save the generated data into an R.data file, which can be accessed by clicking on: The data from the above analysis is saved under [FeatureGeneration.RData](https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/FeatureGeneration.RData).
 ```{r save_kinematic_data, warning=FALSE, cache=TRUE}
