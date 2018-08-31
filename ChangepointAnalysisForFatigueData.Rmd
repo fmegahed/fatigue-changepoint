@@ -28,8 +28,9 @@ cat("\014") # clear console
 rm(list = ls()) # clear global environment
 graphics.off() # close all graphics
 library(pacman) # needs to be installed first
-p_load(R.matlab,plotly,extrafont,grDevices,
-       dplyr,stringr,tidyverse)
+p_load(R.matlab,plotly,extrafont,grDevices,gridExtra,
+       dplyr,stringr,tidyverse,utils,reshape2,
+       grid, cowplot)
 ```
 
 In the snippet below, we extract the 15 ".mat" files in the [GitHub repository](https://github.com/fmegahed/fatigue-changepoint/tree/master/Data/Raw) (where we loaded the data to allow for the reproduction of our work). Then, we perform several transformation steps: (a) extracting the data for the first three columns in the matlab arrays; and (b) computing three kinematic features from the data corresponding to these columns. Due to the differences between Matlab and R, this requires two nested *for* loops. The outer loop increments over the number of subjects, while the inner loop increments based on the different number of rows of data for each subject. Please see the comments within the code chunk for more details. 
@@ -118,3 +119,26 @@ Based on the analysis above, there are **three observations** to be made. *First
 In this task, we examined several approaches for *outlier detection*. We hypothesize (which seems reasonable based on visualizing the data) that these outliers constitue faulty sensor readings (since they are not sustained), and thus, we remove this data prior to any further analysis. In the subsections below, we apply different outlier detection/removal algorithms and provide the corresponding visualizatios to the data. Based on the visualizations, we implement **say the name of which approach**. 
 
 ### Using the whiskers of a Box Plot
+```{r BoxOutlierDetection, cache=TRUE, fig.align='center', out.width = "100%",fig.height=40}
+# We are reading the data locally (you can download the file from GitHub)
+load(file = "./Data/RGenerated/FeatureGeneration.RData")
+for (i in 1:15) {
+  df_transformed <- melt(get(paste0("subject",i,"_features")),
+                         id.vars = "time.from.start",
+                         measure.vars=c("scaled.step.len",
+                                        "scaled.step.height",
+                                        "step.duration"
+                                        )
+                         )
+  assign(paste0("p",i),
+         ggplot(data = df_transformed,
+                aes(x=time.from.start,y=value,group=variable,color=variable,
+                    shape=variable)) + 
+           geom_line() + theme_bw() + 
+           ggtitle(paste0("Participant ",i,": Pre-filtered Data")) + 
+           theme(legend.position="top", axis.text.x=element_text(angle=90,hjust=1)) + facet_wrap(~variable,nrow=1)
+         )
+}
+plot_grid(p1, p2, p3, p4, p5, p6, p7, p8, p9,
+     p10, p11, p12, p13, p14, p15, nrow=15)
+```
