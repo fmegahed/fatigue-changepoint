@@ -36,7 +36,7 @@ p_load(R.matlab,plotly,extrafont,grDevices,gridExtra,
 In the snippet below, we extract the 15 ".mat" files in the [GitHub repository](https://github.com/fmegahed/fatigue-changepoint/tree/master/Data/Raw) (where we loaded the data to allow for the reproduction of our work). Then, we perform several transformation steps: (a) extracting the data for the first three columns in the matlab arrays; and (b) computing three kinematic features from the data corresponding to these columns. Due to the differences between Matlab and R, this requires two nested *for* loops. The outer loop increments over the number of subjects, while the inner loop increments based on the different number of rows of data for each subject. Please see the comments within the code chunk for more details. 
 
 ```{r load_data, cache=TRUE}
-subject_files <- seq(1, 15)
+num_subjects <- seq(1, 15)
 subject_heights <- c(1.71, 1.77, 1.71, 1.59, 1.69,
                      1.63, 1.60, 1.71, 1.67, 1.78,
                      1.68, 1.55, 1.83, 1.81, 1.89)
@@ -44,56 +44,56 @@ subject_heights <- c(1.71, 1.77, 1.71, 1.59, 1.69,
 # Initilizing a df for summary data on participants
 summary_df <- data.frame(matrix(nrow = 15, ncol = 9))
 colnames(summary_df) <- c("Subject.Num", "num.rows",
-                          "num.cols", "mean.scaled.step.len",
-                          "sd.scaled.step.len",
-                          "mean.scaled.step.height",
-                          "sd.scaled.step.height",
-                          "mean.step.duration",
-                          "sd.step.duartion")
+                          "num.cols", "mean.scaled.stride.len",
+                          "sd.scaled.stride.len",
+                          "mean.scaled.stride.height",
+                          "sd.scaled.stride.height",
+                          "mean.stride.duration",
+                          "sd.stride.duartion")
 
-for (i in 1:length(subject_files)) {
+for (i in 1:length(num_subjects)) {
   # Reading the .mat files from GitHub
-  raw_data <- readMat(paste0("https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/Raw/Subject",subject_files[i],".mat?raw=true"))
+  raw_data <- readMat(paste0("https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/Raw/Subject",num_subjects[i],".mat?raw=true"))
   # Compute the number of cells, and rows in each structered matrix
   raw_data_size <- lengths(raw_data) # num of cells
   num_rows <- raw_data_size / 17 # all data had 17 cols
   # Initilizing the six lists needed for storing the data (we keep track of the top 3 for error checking)
-  time_stamp <- vector("list", length = num_rows)
+  time_in_sec <- vector("list", length = num_rows)
   position_x <- vector("list", length = num_rows)
   position_y <- vector("list", length = num_rows)
-  step_time <- vector("list", length = num_rows)
-  step_length <- vector("list", length = num_rows)
-  step_height <- vector("list", length = num_rows)
-  step_duration <- vector("list", length = num_rows)
+  stride_time <- vector("list", length = num_rows)
+  stride_length <- vector("list", length = num_rows)
+  stride_height <- vector("list", length = num_rows)
+  stride_duration <- vector("list", length = num_rows)
   
   # Following for loop is needed since R reads the structured array as a nested list. The list containing the data is called "M.i.k" and it transforms/reads the original array --> rowise. This means that our first three features (with the same timestamp) are always seperated with a distance equal to the total number of rows
   for (j in 1:num_rows) {
     position_x[[j]] <- raw_data[["M.i.k"]][[j]]
     position_y[[j]] <- raw_data[["M.i.k"]][[num_rows + j]]
-    step_time[[j]] <- raw_data[["M.i.k"]][[2 * num_rows + j]]
+    stride_time[[j]] <- raw_data[["M.i.k"]][[2 * num_rows + j]]
     dataholder <- raw_data[["M.i.k"]][[16 * num_rows + j]] # data holder for time
     # Computing the three needed kinematic features
-    step_length[[j]] <-
+    stride_length[[j]] <-
       range(position_x[[j]])[2] - range(position_x[[j]])[1]
-    step_height[[j]] <-
+    stride_height[[j]] <-
       range(position_y[[j]])[2] - range(position_y[[j]])[1]
-    step_duration[[j]] <-
-      range(step_time[[j]])[2] - range(step_time[[j]])[1]
-    time_stamp[[j]] <- lapply(dataholder, mean)# using mean time of step as a time stamp
+    stride_duration[[j]] <-
+      range(stride_time[[j]])[2] - range(stride_time[[j]])[1]
+    time_in_sec[[j]] <- lapply(dataholder, mean)# using mean time of stride as a time stamp
   }
   
   # Scaling and creating one data frame per subject
   assign(paste0("subject", i, "_features"), 
-         data.frame(time.from.start = unlist(time_stamp), 
-                    scaled.step.len = unlist(step_length)/subject_heights[i], 
-                    scaled.step.height = unlist(step_height) / subject_heights[i], 
-                    step.duration = unlist(step_duration)
+         data.frame(time.from.start = unlist(time_in_sec), 
+                    scaled.stride.len = unlist(stride_length)/subject_heights[i], 
+                    scaled.stride.height = unlist(stride_height) / subject_heights[i], 
+                    stride.duration = unlist(stride_duration)
                     )
          )
   
   # Creating a Summary Data Frame
   df_name <- paste0("subject", i, "_features")
-  summary_df[i, 1] <- df_name
+  summary_df[i, 1] <- paste0("subject", i)
   summary_df[i, 2] <- get(df_name) %>% nrow()
   summary_df[i, 3] <- get(df_name) %>% ncol()
   summary_df[i, 4] <- get(df_name)[, 1] %>% mean() %>% round(digits = 4)
@@ -109,36 +109,38 @@ head(subject4_features) %>% round(digits = 3)
 # A Summary of the features for all 15 participants
 summary_df
 rm(raw_data, raw_data_size, i, j, num_rows, 
-   dataholder, subject_files, subject_heights)
+   dataholder, num_subjects, subject_heights)
 save.image(file = "./Data/RGenerated/FeatureGeneration.RData")
 ```
 
-Based on the analysis above, there are **three observations** to be made. *First*, we scaled the step length and height based on the subject's height. This in essence allows us to capture the steps as a percentage of the person's height. This reduces the between subject variablity in the data and is supported by the seminal work of [Oberg et al., 1993](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.473.947&rep=rep1&type=pdf). *Second*, we showed the first six rows from Subject 4 to provide the reader with some insights into the sampling frequeny (after the preprocessing done in [Baghdadi et al. 2018](https://www.tandfonline.com/doi/abs/10.1080/00140139.2018.1442936)). Note that the kinematic features are computed from the sensor channels provided in their paper. *Third*, we saved the generated data into an R.data file, which can be accessed by clicking on:  [FeatureGeneration.RData](https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/FeatureGeneration.RData). We hope that this saved data allows other researchers to reproduce and/or build on our work.
+Based on the analysis above, there are **three observations** to be made. *First*, we scaled the stride length and height based on the subject's height. This in essence allows us to capture the steps as a percentage of the person's height. This reduces the between subject variablity in the data and is supported by the seminal work of [Oberg et al., 1993](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.473.947&rep=rep1&type=pdf). *Second*, we showed the first six rows from Subject 4 to provide the reader with some insights into the sampling frequeny (after the preprocessing done in [Baghdadi et al. 2018](https://www.tandfonline.com/doi/abs/10.1080/00140139.2018.1442936)). Note that the kinematic features are computed from the sensor channels provided in their paper. *Third*, we saved the generated data into an R.data file, which can be accessed by clicking on:  [FeatureGeneration.RData](https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/FeatureGeneration.RData). We hope that this saved data allows other researchers to reproduce and/or build on our work.
 
 ## Detecting and Removing Outliers
 In this task, we examined several approaches for *outlier detection*. We hypothesize (which seems reasonable based on visualizing the data) that these outliers constitue faulty sensor readings (since they are not sustained), and thus, we remove this data prior to any further analysis. In the subsections below, we apply different outlier detection/removal algorithms and provide the corresponding visualizatios to the data. Based on the visualizations, we implement **say the name of which approach**. 
 
-### Using the whiskers of a Box Plot
-```{r BoxOutlierDetection, cache=TRUE, fig.align='center', out.width = "100%",fig.height=40}
+### Plotting the Data {.tabset .tabset-fade}
+```{r BoxOutlierDetection, cache=TRUE, fig.align='center', results='asis'}
 # We are reading the data locally (you can download the file from GitHub)
 load(file = "./Data/RGenerated/FeatureGeneration.RData")
 for (i in 1:15) {
   df_transformed <- melt(get(paste0("subject",i,"_features")),
                          id.vars = "time.from.start",
-                         measure.vars=c("scaled.step.len",
-                                        "scaled.step.height",
-                                        "step.duration"
+                         measure.vars=c("scaled.stride.len",
+                                        "scaled.stride.height",
+                                        "stride.duration"
                                         )
                          )
   assign(paste0("p",i),
          ggplot(data = df_transformed,
                 aes(x=time.from.start,y=value,group=variable,color=variable,
                     shape=variable)) + 
-           geom_line() + theme_bw() + 
+           geom_line() + theme_bw() + ylim(0,2) +
            ggtitle(paste0("Participant ",i,": Pre-filtered Data")) + 
-           theme(legend.position="top", axis.text.x=element_text(angle=90,hjust=1)) + facet_wrap(~variable,nrow=1)
+           theme(legend.position="right", axis.text.x=element_text(angle=90,hjust=1)) + facet_wrap(~variable,nrow=1)
          )
+  cat('####',paste0("P", i), "{-}",'\n')
+  print(get(paste0("p",i)))
+  cat('\n \n')
 }
-plot_grid(p1, p2, p3, p4, p5, p6, p7, p8, p9,
-     p10, p11, p12, p13, p14, p15, nrow=15)
+
 ```
