@@ -235,7 +235,7 @@ for (i in 1:15) {
   cat('<source> <p> Based on the 15 charts above, one can see that using the standard boxplot approach for removing the outliers have resulted in a smoother time-series for all participants. However, the percentage of observations removed as a function of this application is high (i.e. >= 10) for partcipants 6-7, 10, 11-13 and 15. Note that for these participants, the percentage was always under 15%, with the exception of participant 11 who had 23.66% of his/her\'s observation removed as a function of this approach. <b>This obviously represents an unacceptable amount of data lost, and as such we will examine additional methods for removing/detecting outliers. </b> \n \n </p> </source>') 
 
 cat('<source> <p>
-We could have tried making the value of the coefficient multiplied by the IQR coefficient smaller; however, we did not explore this option since this: (a) would have possibly required a large amount of trial-and-error, (b) the approach would be difficult to justify, and (c) we thought it would be more efficient to examine multivariate and/or time-series outlier detection methods next. </p> </source>')
+We could have tried making the value of the coefficient multiplied by the IQR coefficient larger (e.g., both the <i>tsoutlier() function</i> in the <a href="https://cran.r-project.org/web/packages/forecast/forecast.pdf">forecast package</a> and the <i> iqr() function </i> in the <a href="https://cran.r-project.org/web/packages/anomalize/anomalize.pdf">anomalize package</a> use a value of 3 for the coefficient); however, we did not explore this option since this: (a) would have possibly required a large amount of trial-and-error, and (b) the approach would be difficult to justify. </p> </source>')
 
 cat(' \n \n')
 }
