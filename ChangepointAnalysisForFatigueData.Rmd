@@ -4,11 +4,8 @@ author:
   - Amir Baghdadi^[Department of Mechanical and Aerospace Engineering, University at Buffalo]
   - Lora A. Cavuoto^[Department of Industrial and Systems Engineering, University at Buffalo]
   - Allison Jones-Farmer^[Farmer School of Business, Miami University]
-  - Fadel M. Megahed^[Farmer School of Business, Miami University]
-institute: 
-  - $^1$ Department of Mechanical and Aerospace Engineering, University at Buffalo
-  - $^2$ Department of Industrial and Systems Engineering, University at Buffalo
-  - $^3$ Farmer School of Business, Miami University of Ohio
+  - Fadel M. Megahed^[Farmer School of Business, Miami University.  This author can be reached by email at [fmegahed@miamioh.edu](mailto:fmegahed@miamioh.edu).]
+
 date: "`r format(Sys.time(), '%d %B %Y')`"
 output:
   html_document:
@@ -47,9 +44,9 @@ The snippet below documents the list of **R** libraries that were used in this r
 rm(list = ls()) # clear global environment
 graphics.off() # close all graphics
 library(pacman) # needs to be installed first
-p_load(R.matlab,plotly,extrafont,grDevices,gridExtra,
-       dplyr,stringr,tidyverse,utils,reshape2,
-       MVN)
+p_load(R.matlab, plotly, extrafont, grDevices, gridExtra,
+       dplyr, stringr, tidyverse, utils, reshape2,
+       anomalize, MVN)
 ```
 
 In the snippet below, we extract the 15 ".mat" files in the [GitHub repository](https://github.com/fmegahed/fatigue-changepoint/tree/master/Data/Raw) (where we loaded the data to allow for the reproduction of our work). Note that these files were originally produced in [Baghdadi et al., 2018](https://www.tandfonline.com/doi/abs/10.1080/00140139.2018.1442936?). Then, we perform several transformation steps: (a) extracting the data for the first three columns in the matlab arrays; and (b) computing three kinematic features from the data corresponding to these columns. Due to the differences between Matlab and R, this requires two nested *for* loops. The outer loop increments over the number of subjects, while the inner loop increments based on the different number of rows of data for each subject. Please see the comments within the code chunk for more details. 
@@ -286,4 +283,14 @@ for (i in 1:15) {
 
 ```
 
-### Time-Series based Method
+### Time-Series based Methods
+We will need to read about the following methods:
+
+(A) The [ecp package](https://arxiv.org/pdf/1309.3295.pdf), which provides some insights into a multivariate (time-series?) based method. 
+
+(B) The [anomalize package](https://cran.r-project.org/web/packages/anomalize/vignettes/anomalize_methods.html), which provides the following: 
+
+  (i) Two univariate implementations based on the interquartile range and the generalized extreme studentized test. Note that their default of the IQR is different than base **R** (and that of most standard statistical textbooks). They use 3 simialr to that found in the [forecast package's](https://cran.r-project.org/web/packages/forecast/forecast.pdf) *tsoutlier()* function. 
+  
+  (ii) For time-series implementations, the [anomalize package](https://cran.r-project.org/web/packages/anomalize/vignettes/anomalize_methods.html) presents two additional methods *stl* and *twitter (twitter decomposition)*, which are inputs to its *time_decompose()* function. 
+  

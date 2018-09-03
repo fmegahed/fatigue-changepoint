@@ -14,7 +14,7 @@
 <meta name="author" content="Allison Jones-Farmer" />
 <meta name="author" content="Fadel M. Megahed" />
 
-<meta name="date" content="2018-09-02" />
+<meta name="date" content="2018-09-03" />
 
 <title>Changepoint Analysis For Fatigue Data</title>
 
@@ -247,7 +247,7 @@ div.tocify {
 <h4 class="author"><em>Lora A. Cavuoto<a href="#fn2" class="footnoteRef" id="fnref2"><sup>2</sup></a></em></h4>
 <h4 class="author"><em>Allison Jones-Farmer<a href="#fn3" class="footnoteRef" id="fnref3"><sup>3</sup></a></em></h4>
 <h4 class="author"><em>Fadel M. Megahed<a href="#fn4" class="footnoteRef" id="fnref4"><sup>4</sup></a></em></h4>
-<h4 class="date"><em>02 September 2018</em></h4>
+<h4 class="date"><em>03 September 2018</em></h4>
 
 </div>
 
@@ -264,9 +264,9 @@ div.tocify {
 <pre class="r"><code>rm(list = ls()) # clear global environment
 graphics.off() # close all graphics
 library(pacman) # needs to be installed first
-p_load(R.matlab,plotly,extrafont,grDevices,gridExtra,
-       dplyr,stringr,tidyverse,utils,reshape2,
-       MVN)</code></pre>
+p_load(R.matlab, plotly, extrafont, grDevices, gridExtra,
+       dplyr, stringr, tidyverse, utils, reshape2,
+       anomalize, MVN)</code></pre>
 <p>In the snippet below, we extract the 15 “.mat” files in the <a href="https://github.com/fmegahed/fatigue-changepoint/tree/master/Data/Raw">GitHub repository</a> (where we loaded the data to allow for the reproduction of our work). Note that these files were originally produced in <a href="https://www.tandfonline.com/doi/abs/10.1080/00140139.2018.1442936?">Baghdadi et al., 2018</a>. Then, we perform several transformation steps: (a) extracting the data for the first three columns in the matlab arrays; and (b) computing three kinematic features from the data corresponding to these columns. Due to the differences between Matlab and R, this requires two nested <em>for</em> loops. The outer loop increments over the number of subjects, while the inner loop increments based on the different number of rows of data for each subject. Please see the comments within the code chunk for more details.</p>
 <pre class="r"><code>num_subjects &lt;- seq(1, 15)
 subject_heights &lt;- c(1.71, 1.77, 1.71, 1.59, 1.69,
@@ -1639,8 +1639,17 @@ NO
 <p>Based on the MVN test and the plot above, it is clear that the data is not normally distributed. Thus, an outlier detection/removal algorithm based on a MVN distribution will be inappropriate. This observation is true to not only Participant 15 but to also all the other participants. Thus, in the following section we will investigate method(s) based on the time-series outlier detection literature.</p>
 </div>
 </div>
-<div id="time-series-based-method" class="section level3">
-<h3><span class="header-section-number">2.2.3</span> Time-Series based Method</h3>
+<div id="time-series-based-methods" class="section level3">
+<h3><span class="header-section-number">2.2.3</span> Time-Series based Methods</h3>
+<p>We will need to read about the following methods:</p>
+<ol style="list-style-type: upper-alpha">
+<li><p>The <a href="https://arxiv.org/pdf/1309.3295.pdf">ecp package</a>, which provides some insights into a multivariate (time-series?) based method.</p></li>
+<li><p>The <a href="https://cran.r-project.org/web/packages/anomalize/vignettes/anomalize_methods.html">anomalize package</a>, which provides the following:</p></li>
+</ol>
+<ol style="list-style-type: lower-roman">
+<li><p>Two univariate implementations based on the interquartile range and the generalized extreme studentized test. Note that their default of the IQR is different than base <strong>R</strong> (and that of most standard statistical textbooks). They use 3 simialr to that found in the <a href="https://cran.r-project.org/web/packages/forecast/forecast.pdf">forecast package’s</a> <em>tsoutlier()</em> function.</p></li>
+<li><p>For time-series implementations, the <a href="https://cran.r-project.org/web/packages/anomalize/vignettes/anomalize_methods.html">anomalize package</a> presents two additional methods <em>stl</em> and <em>twitter (twitter decomposition)</em>, which are inputs to its <em>time_decompose()</em> function.</p></li>
+</ol>
 </div>
 </div>
 </div>
@@ -1650,7 +1659,7 @@ NO
 <li id="fn1"><p>Department of Mechanical and Aerospace Engineering, University at Buffalo<a href="#fnref1">↩</a></p></li>
 <li id="fn2"><p>Department of Industrial and Systems Engineering, University at Buffalo<a href="#fnref2">↩</a></p></li>
 <li id="fn3"><p>Farmer School of Business, Miami University<a href="#fnref3">↩</a></p></li>
-<li id="fn4"><p>Farmer School of Business, Miami University<a href="#fnref4">↩</a></p></li>
+<li id="fn4"><p>Farmer School of Business, Miami University. This author can be reached by email at <a href="mailto:fmegahed@miamioh.edu">fmegahed@miamioh.edu</a>.<a href="#fnref4">↩</a></p></li>
 </ol>
 </div>
 
