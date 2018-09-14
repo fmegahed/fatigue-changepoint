@@ -127,7 +127,7 @@ head(subject4_features) %>% round(digits = 3)
 # A Summary of the features for all 15 participants
 summary_df
 rm(raw_data, raw_data_size, i, j, num_rows, 
-   dataholder, num_subjects, subject_heights)
+   dataholder, num_subjects)
 save.image(file = "./Data/RGenerated/FeatureGeneration.RData")
 ```
 
@@ -167,8 +167,21 @@ for (i in 1:15) {
   print(get(paste0("p",i)))
   cat('\n \n')
   
-  cat('<source> <p> Based on the plots above, we observed the presence of several outliers for each participant. For the <i>scaled stride length </i>, it is unlikely that the stride length exceeds 1 for any of our participants since this means that their stride is greater than their height. For example, Participant 2 has one value that is greater than 1.75. This value is infeasible and reflects an error in either the segmentation and/or the sensor signal. Similar observations can be made for <i>the scaled stride height </i>, we expect that most of the observations to be less than or equal to 0.2. For an example, P10 has an observation which is about 0.5 and 5-6 observations that are greater than 0.2. These observations should be removed. These sensor/segmentation based errors will have to be <b>removed</b>. We do not correct them since: (a) using a <i>mean imputation (or any other form of imputation)</i> will affect our changepoint modeling results; and (b) removing them will have a negligible effect on both the sample size and more importantly, the interpretation of the sensor signal (since the data points are typically within 2 seconds). To remove them, can use statistical outlier detection approaches (see <a href = "https://link.springer.com/article/10.1023/B:AIRE.0000045502.10941.a9"> Hodge and Austin, 2004 </a>). Based on our dataset and plots, these errors will also be captured by a statistical approach. </p> </source>')
+  stat_printdf <- get(paste0("subject",i,"_features"))
   
+ cat(paste0('<source> <p> Based on the <b>raw data</b>, Participant ', i,
+             ' has an average scaled stride length of ',
+             round(mean(stat_printdf[,2]),2),
+             ', an average scaled stride height of ',
+             round(mean(stat_printdf[,3]),2),
+             ' and an average stride duration of ', round(mean(stat_printdf[,4]),2),
+             ' seconds. Based on their height of ', subject_heights[i],
+             ' meters, their average stride length and stride height are', ' ',
+             round(mean(stat_printdf[,2])*subject_heights[i],2),
+             ' and ', ' ', round(mean(stat_printdf[,3])*subject_heights[i],2),
+             ', respectively.', '</p> </source>'
+             )
+      )
 cat(' \n \n')
 }
 
@@ -182,6 +195,7 @@ One of the most commonly used approaches for univariate outliers are defined to 
 ```{r BoxOutlierDetection, cache=TRUE, fig.align='center', results='asis', out.width='65%'}
 # We are reading the data locally (you can download the file from GitHub)
 load(file = "./Data/RGenerated/FeatureGeneration.RData")
+
 outliers_bp <- list() # initilizing a list to store outliers per participant
 for (i in 1:15) {
   df <- get(paste0("subject",i,"_features")) # Getting Data from Sec.
@@ -239,10 +253,26 @@ for (i in 1:15) {
   print(get(paste0("g",i)))
   cat('\n \n')
   
-  cat('<source> <p> Based on the 15 charts above, one can see that using the standard boxplot approach for removing the outliers have resulted in a smoother time-series for all participants. However, the percentage of observations removed as a function of this application is high (i.e. >= 10) for partcipants 6-7, 10, 11-13 and 15. Note that for these participants, the percentage was always under 15%, with the exception of participant 11 who had 23.66% of his/her\'s observation removed as a function of this approach. <b>This obviously represents an unacceptable amount of data lost, and as such we will examine additional methods for removing/detecting outliers. </b> \n \n </p> </source>') 
+  stat_printdf <- get(paste0("subject",i,"_bp"))
+  
+ cat(paste0('<source> <p> After applying the <b>boxplot outlier detection methodology</b>, Participant ', i,
+             ' has an average scaled stride length of ',
+             round(mean(stat_printdf[,2]),2),
+             ', an average scaled stride height of ',
+             round(mean(stat_printdf[,3]),2),
+             ' and an average stride duration of ', round(mean(stat_printdf[,4]),2),
+             ' seconds. Based on their height of ', subject_heights[i],
+             ' meters, their average stride length and stride height are', ' ',
+             round(mean(stat_printdf[,2])*subject_heights[i],2),
+             ' and ', ' ', round(mean(stat_printdf[,3])*subject_heights[i],2),
+             ', respectively.', '</p> </source>'
+             )
+      )
+  
+cat('\n')
+  
 
-cat('<source> <p>
-We could have tried making the value of the coefficient multiplied by the IQR coefficient larger (e.g., both the <i>tsoutlier() function</i> in the <a href="https://cran.r-project.org/web/packages/forecast/forecast.pdf">forecast package</a> and the <i> iqr() function </i> in the <a href="https://cran.r-project.org/web/packages/anomalize/anomalize.pdf">anomalize package</a> use a value of 3 for the coefficient); however, we did not explore this option since this: (a) would have possibly required a large amount of trial-and-error, and (b) the approach would be difficult to justify. </p> </source>')
+cat('<source> <p> Note that we could have tried making the value of the coefficient multiplied by the IQR coefficient larger (e.g., both the <i>tsoutlier() function</i> in the <a href="https://cran.r-project.org/web/packages/forecast/forecast.pdf">forecast package</a> and the <i> iqr() function </i> in the <a href="https://cran.r-project.org/web/packages/anomalize/anomalize.pdf">anomalize package</a> use a value of 3 for the coefficient); however, we did not explore this option since this: (a) would have possibly required a large amount of trial-and-error, and (b) the approach would be difficult to justify. </p> </source>')
 
 cat(' \n \n')
 }
@@ -304,9 +334,6 @@ An algorithmic approach based on these observations is implemented below. Note t
 ```{r SigProcOutlierDetection, cache=TRUE, fig.align='center', results='asis', out.width='65%', message=FALSE}
 # We are reading the data locally (you can download the file from GitHub)
 load(file = "./Data/RGenerated/FeatureGeneration.RData")
-subject_heights <- c(1.71, 1.77, 1.71, 1.59, 1.69,
-                     1.63, 1.60, 1.71, 1.67, 1.78,
-                     1.68, 1.55, 1.83, 1.81, 1.89)
 for (i in 1:15) {
   df <- get(paste0("subject",i,"_features")) # Getting Data from Sec.
   # Obtaining the Outliers for each of the three variables

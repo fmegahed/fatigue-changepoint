@@ -4,6 +4,7 @@ R.matlab
 ggplot2
 plotly
 extrafont
+gridExtra
 dplyr
 stringr
 tidyverse
@@ -12,13 +13,10 @@ tidyr
 readr
 purrr
 forcats
-gridExtra
 reshape2
-cowplot
-xtable
-MVN
 anomalize
+forecast
+MVN
 splus2R
 ifultools
 fractal
-forecast
