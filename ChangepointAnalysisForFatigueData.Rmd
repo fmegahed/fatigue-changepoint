@@ -48,7 +48,8 @@ graphics.off() # close all graphics
 library(pacman) # needs to be installed first
 p_load(R.matlab, plotly, extrafont, grDevices, gridExtra,
        dplyr, stringr, tidyverse, utils, reshape2,
-       anomalize, forecast, MVN, fractal)
+       anomalize, forecast, MVN, fractal,
+       ecp)
 ```
 
 In the snippet below, we extract the 15 ".mat" files in the [GitHub repository](https://github.com/fmegahed/fatigue-changepoint/tree/master/Data/Raw) (where we loaded the data to allow for the reproduction of our work). Note that these files were originally produced in [Baghdadi et al., 2018](https://www.tandfonline.com/doi/abs/10.1080/00140139.2018.1442936?). Then, we perform several transformation steps: (a) extracting the data for the first three columns in the matlab arrays; and (b) computing three kinematic features from the data corresponding to these columns. Due to the differences between Matlab and R, this requires two nested *for* loops. The outer loop increments over the number of subjects, while the inner loop increments based on the different number of rows of data for each subject. Please see the comments within the code chunk for more details. 
@@ -320,7 +321,7 @@ for (i in 1:15) {
 
 ```
 
-# Filtering Approaches
+# Filtering Approaches and Data Preprocessing Approaches
 An alternative approach to detecting and then removing outliers is to use smoothing techniques to "correct" the data. Based on the results shown in the previous sections, the fundamental hypotheses behind this approach are:
 
   (A) The sensors' data seem to be non-stationary, autocorrelated and somewhat complex (from a statistical perspective). More importantly, there are spikes in the data that cannot be explained by the kinematic model. These spikes produce values that are unrealistic (e.g., a scaled stride length > 1 is not possible since that means that the stride of the person is larger than their height). While this insight is useful, there is no hard limit that we can enforce since the literature reports mean values across the population instead of attempting to provide a physical threshold on what is possible.  
@@ -330,7 +331,7 @@ An alternative approach to detecting and then removing outliers is to use smooth
   (C) Smoothing (i.e. a low pass filter on the data) will allow us to impute values for every stride (after an initial size window). This will allow us to preserve the successive nature of the strides, "fix" the outliers based on neighboring strides, and not throw away any observation.
 
 ## The Median Filtering Approach from the Signal Processing Literature {.tabset .tabset-fade}
-An algorithmic approach based on these observations is implemented below. Note that we are using the [median filter](https://onlinelibrary.wiley.com/doi/book/10.1002/9780470740156) from the [fractal package](https://cran.r-project.org/web/packages/fractal/fractal.pdf) on CRAN. 
+An algorithmic approach based on these observations is implemented below. Note that we are using the [median filter](https://onlinelibrary.wiley.com/doi/book/10.1002/9780470740156) from the [fractal package](https://cran.r-project.org/web/packages/fractal/fractal.pdf) on CRAN. Note that in the analysis below, we are applying the *median Filter*, with n=29 (i.e., the median is calculated based on a overlaping moving window of size 29 strides). We chose this window size based on the recommendation of our biomechanics expert as it allows us to: (a) ignore the effect of any turns in the direction of motion; and (b) the corresponding window size is approximately 30 seconds long (which presents an easy to remember rule for practical application).
 ```{r SigProcOutlierDetection, cache=TRUE, fig.align='center', results='asis', out.width='65%', message=FALSE}
 # We are reading the data locally (you can download the file from GitHub)
 load(file = "./Data/RGenerated/FeatureGeneration.RData")
@@ -338,9 +339,9 @@ for (i in 1:15) {
   df <- get(paste0("subject",i,"_features")) # Getting Data from Sec.
   # Obtaining the Outliers for each of the three variables
   time.from.start <- df[,1]
-  scaled.stride.len <- medianFilter(df[,2], order = 9) # moving window of size 9 obs
-  scaled.stride.height <- medianFilter(df[,3], order = 9) # moving window of size 9 obs
-  stride.duration <- medianFilter(df[,4], order = 9) # moving window of size 9 obs
+  scaled.stride.len <- medianFilter(df[,2], order = 29) # moving window of size 29 obs
+  scaled.stride.height <- medianFilter(df[,3], order = 29) # moving window of size 29 obs
+  stride.duration <- medianFilter(df[,4], order = 29) # moving window of size 29 obs
  
   # Computing the first difference to make seein the values easier
   diff.time.from.start <- time.from.start[-1]
@@ -447,5 +448,150 @@ save(subject1_medianf, subject2_medianf, subject3_medianf, subject4_medianf,
      subject13_median_diff_f, subject14_median_diff_f, subject15_median_diff_f,
      file = "./Data/RGenerated/MedianFilteredData.RData")
 ```
+
+The data post the median filtered approach is stored at the [following location](https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/MedianFilteredData.RData?) in our GitHub Repository.
+
+## Applying the Median Filter Methodology on the CUSUM of the Features
+To be examine later.
+
+
+# Multivariate Changepoint Detection
+To be filled later
+
+## The Nonparameteric Approach of Matterson and James for Multiple Changepoint Detection 
+In this section, we will examine the use of the approach of [Matteson and James (2014)](https://amstat.tandfonline.com/doi/abs/10.1080/01621459.2013.849605) for multiple change point analysis of our trivariate data. Our analysis takes advantage of their **R** package titled *ecp*, which is described in more details in the following paper: [James and Matteson (2014)](https://cran.r-project.org/web/packages/ecp/vignettes/ecp.pdf). The multivariate changepoint method will be first tested using the median filtered data and then using the CUSUM of the median filtered data.
+
+### Using the Median Filtered Data {.tabset .tabset-fade}
+To apply the *ecp approach of Matterson and James (2014)* on the **median filtered data**, we need to use a window size (which reflects the smallest size of a shift that is to be detected). From a biomechanics perspective, we expect that the change of performance due to fatigue will be sustained at least for several minutes (until the person adapts and/or rests). Thus, the size of the window ($m_{ecp}$) should be $m_{ecp} \ge 60$. In our analysis, we tried the following window sizes: 60, 120, 180, 300, and 600. For most of the participants, the number and/or location of change were almost similar. For demonstration purpose, we use $m_{ecp} = 180$ below.  
+```{r MCP_MedianFilteredData, cache=TRUE, fig.align='center', results='asis', out.width='65%', message=FALSE}
+  load(file = "./Data/RGenerated/MedianFilteredData.RData")
+  pen <- function(x) -length(x) #Equally penalizes every additional changepoint
+  window.size <- 180
+  changepoints_medianf <- list()
+
+  for (i in 1:15) {
+      df <- get(paste0("subject",i,"_medianf"))
+      # Making the DF divisiable by the window size
+      # (i.e., we are removing the remainder so that our chunks are equally sized)
+      rows.to.keep <- nrow(df[,2:4]) %/% window.size
+      remainder <- nrow(df[,2:4]) %% window.size
+      df.MultivariateChangepoint<- df[1:(nrow(df)-remainder),
+                                      2:4] %>% as.matrix()
+      
+      # Utilizing the e.agglo() from the ecp package
+      mem <- rep(1:rows.to.keep, each=window.size)
+      y = e.agglo(X=df.MultivariateChangepoint,
+                  member= mem,
+                  alpha = 1,
+                  penalty = pen)
+      changepoints_medianf[[i]] <- y$estimates
+      
+      cat('####',paste0("P", i), "{-}",'\n')
+      df_transformed <- melt(get(paste0("subject",i,"_medianf")),
+                         id.vars = "time.from.start",
+                         measure.vars=c("scaled.stride.len",
+                                        "scaled.stride.height",
+                                        "stride.duration"
+                                        )
+                         ) # ggplot data needs to be tall
+      
+      assign(paste0("g",i),
+         ggplot(data = df_transformed,
+                aes(x=time.from.start, y=value, group=variable,
+                    color=variable,shape=variable)) + 
+           geom_line() + theme_bw() + 
+           ggtitle("Changepoints for the Median Filtered Data (at vertical black lines)") + 
+           theme(legend.position="none",
+                 #axis.text.x=element_text(angle=90,hjust=1),
+                 plot.title = element_text(hjust = 0.5)) +
+           facet_wrap(~variable,nrow=3, scales = "free_y") +
+           geom_vline(xintercept= y$estimates)
+         )
+      
+      print(get(paste0("g",i)))
+  
+  cat('\n')
+  
+  cat(paste0('<source> <p> Based on the <b>ecp package</b>, the number of changepoints for participant ', i,
+             ' is equal to: ',
+             length(changepoints_medianf[[i]]),
+             '. These changepoints are located at: ',
+             paste(changepoints_medianf[[i]], collapse = ", "),
+             '. ')
+      )
+  
+  cat('\n \n')
+  save(changepoints_medianf,
+       file = "./Data/RGenerated/ECPChangePointsMFData.RData")
+  }
+```
+The results from the analysis above can be found at: [ECPChangePointsMFData.RData](https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/ECPChangePointsMFData.RData)
+
+
+### Using the Median Filtered Differenced Data {.tabset .tabset-fade}
+Here, we apply the ecp approach of Matterson and James (2014) on the **median filtered differenced data** (as opposed to the median filtered timeseries). For demonstration purpose, we use $m_{ecp} = 180$ below.  
+```{r MCP_MedianFilteredDiffData, cache=TRUE, fig.align='center', results='asis', out.width='65%', message=FALSE}
+  load(file = "./Data/RGenerated/MedianFilteredData.RData")
+  pen <- function(x) -length(x) #Equally penalizes every additional changepoint
+  window.size <- 180
+  changepoints_medianf_diff <- list()
+
+  for (i in 1:15) {
+      df <- get(paste0("subject",i,"_median_diff_f"))
+      # Making the DF divisiable by the window size
+      # (i.e., we are removing the remainder so that our chunks are equally sized)
+      rows.to.keep <- nrow(df[,2:4]) %/% window.size
+      remainder <- nrow(df[,2:4]) %% window.size
+      df.MultivariateChangepoint<- df[1:(nrow(df)-remainder),
+                                      2:4] %>% as.matrix()
+      
+      # Utilizing the e.agglo() from the ecp package
+      mem <- rep(1:rows.to.keep, each=window.size)
+      y = e.agglo(X=df.MultivariateChangepoint,
+                  member= mem,
+                  alpha = 1,
+                  penalty = pen)
+      changepoints_medianf_diff[[i]] <- y$estimates
+      
+      cat('####',paste0("P", i), "{-}",'\n')
+      df_transformed <- melt(get(paste0("subject",i,"_median_diff_f")),
+                         id.vars = "diff.time.from.start",
+                         measure.vars=c("diff.scaled.stride.len",
+                                        "diff.scaled.stride.height",
+                                        "diff.stride.duration"
+                                        )
+                         ) # ggplot data needs to be tall
+      
+      assign(paste0("g",i),
+         ggplot(data = df_transformed,
+                aes(x=diff.time.from.start, y=value, group=variable,
+                    color=variable,shape=variable)) + 
+           geom_line() + theme_bw() + 
+           ggtitle("Changepoints for the Median Filtered Differenced Data (at vertical black lines)") + 
+           theme(legend.position="none",
+                 #axis.text.x=element_text(angle=90,hjust=1),
+                 plot.title = element_text(hjust = 0.5)) +
+           facet_wrap(~variable,nrow=3, scales = "free_y") +
+           geom_vline(xintercept= y$estimates)
+         )
+      
+      print(get(paste0("g",i)))
+  
+  cat('\n')
+  
+  cat(paste0('<source> <p> Based on the <b>ecp package</b>, the number of changepoints for the median filtered differenced data for participant ', i,
+             ' is equal to: ',
+             length(changepoints_medianf_diff[[i]]),
+             '. These changepoints are located at: ',
+             paste(changepoints_medianf_diff[[i]], collapse = ", "),
+             '. ')
+      )
+  
+  cat('\n \n')
+  save(changepoints_medianf_diff,
+       file = "./Data/RGenerated/ECPChangePointsDiffMFData.RData")
+  }
+```
+The results from the analysis above can be found at: [ECPChangePointsDiffMFData.RData](https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/ECPChangePointsDiffMFData.RData)
 
   
