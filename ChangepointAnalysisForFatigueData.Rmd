@@ -28,11 +28,11 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-In this paper, we attempt to examine whether the use of change-point analysis techniques is appropriate for detecting fatigue based on data captured from wearable sensors. As such, we perform a **secondary data analysis** to the data generated in: [Baghdadi et al., 2018](https://www.tandfonline.com/doi/full/10.1080/00140139.2018.1442936). The reader should note that their raw data was preprocessed using:
+In this paper, we attempt to examine whether the use of change-point analysis techniques is appropriate for detecting fatigue based on data captured from wearable sensors. As such, we perform a **secondary data analysis** to the data generated in: [Baghdadi et al., 2018](https://www.tandfonline.com/doi/full/10.1080/00140139.2018.1442936). The reader should note that their raw data was preprocessed using:  
 
-  (A) *Kalman Filter:* Used to process the raw data from sensors to: (i) estimate the spatial orientation of the body with respect to the global reference frame, and (ii) to estimate the kinematics of motion.
+  (A) *Kalman Filter:* Used to process the raw data from sensors to: (i) estimate the spatial orientation of the body with respect to the global reference frame, and (ii) to estimate the kinematics of motion.  
   
-  (B) *Segmentation:* The motion segments where then segmented using an algorithm that assumes the existence of two peaks in the translational acceleration of the gait cycle. This assumption was justified based on the results of [Tongen and Wunderlich, 2010](https://www.cambridge.org/core/books/mathematics-and-sports/biomechanics-of-running-and-walking/0DC334F72A56527FC4517B297923E9D3) as well as the authors' preliminary analyses.
+  (B) *Segmentation:* The motion segments where then segmented using an algorithm that assumes the existence of two peaks in the translational acceleration of the gait cycle. This assumption was justified based on the results of [Tongen and Wunderlich, 2010](https://www.cambridge.org/core/books/mathematics-and-sports/biomechanics-of-running-and-walking/0DC334F72A56527FC4517B297923E9D3) as well as the authors' preliminary analyses.  
   
 The reader can **show** any code chunk by clicking on the *code* button. We chose to make the default for the code hidden since we: (a) wanted to improve the readability of this document; and (b) assumed that the readers will not be interested in reading every code chunk.
 
@@ -322,8 +322,8 @@ for (i in 1:15) {
 ```
 
 # Filtering Approaches and Data Preprocessing Approaches
-An alternative approach to detecting and then removing outliers is to use smoothing techniques to "correct" the data. Based on the results shown in the previous sections, the fundamental hypotheses behind this approach are:
-
+An alternative approach to detecting and then removing outliers is to use smoothing techniques to "correct" the data. Based on the results shown in the previous sections, the fundamental hypotheses behind this approach are: 
+  
   (A) The sensors' data seem to be non-stationary, autocorrelated and somewhat complex (from a statistical perspective). More importantly, there are spikes in the data that cannot be explained by the kinematic model. These spikes produce values that are unrealistic (e.g., a scaled stride length > 1 is not possible since that means that the stride of the person is larger than their height). While this insight is useful, there is no hard limit that we can enforce since the literature reports mean values across the population instead of attempting to provide a physical threshold on what is possible.  
   
   (B) The outliers tended to appear in pairs of two; indicating a possible issue in the segmentation of the data. Note that we label this data as outliers since it is not sustained (i.e., it is unlikely to say that a person is fatigued for only two stride).  
@@ -433,6 +433,9 @@ for (i in 1:15) {
       )
     
   cat(' \n \n')
+  cat('<source> <p> The data processed with the median filtered approach is stored at the <a href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/MedianFilteredData.RData">following location</a> in our GitHub Repository.')
+  cat('\n \n')
+  
 }
 # Saving a list of cleaned 
 save(subject1_medianf, subject2_medianf, subject3_medianf, subject4_medianf,
@@ -449,14 +452,13 @@ save(subject1_medianf, subject2_medianf, subject3_medianf, subject4_medianf,
      file = "./Data/RGenerated/MedianFilteredData.RData")
 ```
 
-The data post the median filtered approach is stored at the [following location](https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/MedianFilteredData.RData?) in our GitHub Repository.
 
 ## Applying the Median Filter Methodology on the CUSUM of the Features
-To be examine later.
+To be examined later.
 
 
 # Multivariate Changepoint Detection
-To be filled later
+To be filled later.
 
 ## The Nonparameteric Approach of Matterson and James for Multiple Changepoint Detection 
 In this section, we will examine the use of the approach of [Matteson and James (2014)](https://amstat.tandfonline.com/doi/abs/10.1080/01621459.2013.849605) for multiple change point analysis of our trivariate data. Our analysis takes advantage of their **R** package titled *ecp*, which is described in more details in the following paper: [James and Matteson (2014)](https://cran.r-project.org/web/packages/ecp/vignettes/ecp.pdf). The multivariate changepoint method will be first tested using the median filtered data and then using the CUSUM of the median filtered data.
@@ -517,15 +519,13 @@ To apply the *ecp approach of Matterson and James (2014)* on the **median filter
              length(changepoints_medianf[[i]]),
              '. These changepoints are located at: ',
              paste(changepoints_medianf[[i]], collapse = ", "),
-             '. ')
+             '. The results from the analysis above can be found at: <a href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/ECPChangePointsMFData.RData">ECPChangePointsMFData.RData</a>. </p> </source>')
       )
-  
   cat('\n \n')
-  save(changepoints_medianf,
-       file = "./Data/RGenerated/ECPChangePointsMFData.RData")
   }
+save(changepoints_medianf,
+       file = "./Data/RGenerated/ECPChangePointsMFData.RData")
 ```
-The results from the analysis above can be found at: [ECPChangePointsMFData.RData](https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/ECPChangePointsMFData.RData)
 
 
 ### Using the Median Filtered Differenced Data {.tabset .tabset-fade}
@@ -584,14 +584,20 @@ Here, we apply the ecp approach of Matterson and James (2014) on the **median fi
              length(changepoints_medianf_diff[[i]]),
              '. These changepoints are located at: ',
              paste(changepoints_medianf_diff[[i]], collapse = ", "),
-             '. ')
+             '. The results from the analysis above can be found at: <a href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/ECPChangePointsDiffMFData.RData">ECPChangePointsDiffMFData.RData</a>. </p> </source>')
       )
   
   cat('\n \n')
-  save(changepoints_medianf_diff,
-       file = "./Data/RGenerated/ECPChangePointsDiffMFData.RData")
+
   }
+save(changepoints_medianf_diff,
+       file = "./Data/RGenerated/ECPChangePointsDiffMFData.RData")
 ```
-The results from the analysis above can be found at: [ECPChangePointsDiffMFData.RData](https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/ECPChangePointsDiffMFData.RData)
+
+# Things to Do Next
+  (A) Validate the Changepoint results based on the Subjective Ratings of Fatigue.  
+  (B) Try to come up with a general diagnosis/understanding of how fatigue develops (e.g., we start with a ramp up phase, then steady state, then fatigue starting, and then person is totally fatigued).  
+  (C) See if the insights are consistent if we did CUSUM.  
+
 
   
