@@ -114,12 +114,12 @@ for (i in 1:length(num_subjects)) {
   summary_df[i, 1] <- paste0("subject", i)
   summary_df[i, 2] <- get(df_name) %>% nrow()
   summary_df[i, 3] <- get(df_name) %>% ncol()
-  summary_df[i, 4] <- get(df_name)[, 1] %>% mean() %>% round(digits = 4)
-  summary_df[i, 5] <- get(df_name)[, 1] %>% sd() %>% round(digits = 4)
-  summary_df[i, 6] <- get(df_name)[, 2] %>% mean() %>% round(digits = 4)
-  summary_df[i, 7] <- get(df_name)[, 2] %>% sd() %>% round(digits = 4)
-  summary_df[i, 8] <- get(df_name)[, 3] %>% mean() %>% round(digits = 4)
-  summary_df[i, 9] <- get(df_name)[, 3] %>% sd() %>% round(digits = 4)
+  summary_df[i, 4] <- get(df_name)[, 2] %>% mean() %>% round(digits = 4)
+  summary_df[i, 5] <- get(df_name)[, 2] %>% sd() %>% round(digits = 4)
+  summary_df[i, 6] <- get(df_name)[, 3] %>% mean() %>% round(digits = 4)
+  summary_df[i, 7] <- get(df_name)[, 3] %>% sd() %>% round(digits = 4)
+  summary_df[i, 8] <- get(df_name)[, 4] %>% mean() %>% round(digits = 4)
+  summary_df[i, 9] <- get(df_name)[, 4] %>% sd() %>% round(digits = 4)
 }
 # Printing the top six rows of Subject 4's data as an example
 head(subject4_features) %>% round(digits = 3)
@@ -338,9 +338,9 @@ for (i in 1:15) {
   df <- get(paste0("subject",i,"_features")) # Getting Data from Sec.
   # Obtaining the Outliers for each of the three variables
   time.from.start <- df[,1]
-  scaled.stride.len <- medianFilter(df[,2], order = 5) # moving window of size 5 obs
-  scaled.stride.height <- medianFilter(df[,3], order = 5) # moving window of size 5 obs
-  stride.duration <- medianFilter(df[,4], order = 5) # moving window of size 5 obs
+  scaled.stride.len <- medianFilter(df[,2], order = 9) # moving window of size 9 obs
+  scaled.stride.height <- medianFilter(df[,3], order = 9) # moving window of size 9 obs
+  stride.duration <- medianFilter(df[,4], order = 9) # moving window of size 9 obs
  
   # Computing the first difference to make seein the values easier
   diff.time.from.start <- time.from.start[-1]
