@@ -508,11 +508,11 @@ To be filled later.
 In this section, we will examine the use of the approach of [Matteson and James (2014)](https://amstat.tandfonline.com/doi/abs/10.1080/01621459.2013.849605) for multiple change point analysis of our trivariate data. Our analysis takes advantage of their **R** package titled *ecp*, which is described in more details in the following paper: [James and Matteson (2014)](https://cran.r-project.org/web/packages/ecp/vignettes/ecp.pdf). The multivariate changepoint method will be first tested using the median filtered data and then using the CUSUM of the median filtered data.
 
 ### Using the Median Filtered Data {.tabset .tabset-fade}
-To apply the *ecp approach of Matterson and James (2014)* on the **median filtered data**, we need to use a window size (which reflects the smallest size of a shift that is to be detected). From a biomechanics perspective, we expect that the change of performance due to fatigue will be sustained at least for several minutes (until the person adapts and/or rests). Thus, the size of the window ($m_{ecp}$) should be $m_{ecp} \ge 60$. In our analysis, we tried the following window sizes: 60, 120, 180, 300, and 600. For most of the participants, the number and/or location of change were almost similar. For demonstration purpose, we use $m_{ecp} = 180$ below.  
+To apply the *ecp approach of Matterson and James (2014)* on the **median filtered data**, we need to use a window size (which reflects the smallest size of a shift that is to be detected). From a biomechanics perspective, we expect that the change of performance due to fatigue will be sustained at least for several minutes (until the person adapts and/or rests). Thus, the size of the window ($m_{ecp}$) should be $m_{ecp} \ge 60$. In our analysis, we tried the following window sizes: 60, 120, 180, 300, and 600. For most of the participants, the number and/or location of change were almost similar. For demonstration purpose, we use $m_{ecp} = 120$ below.  
 ```{r MCP_MedianFilteredData, cache=TRUE, fig.align='center', results='asis', out.width='65%', message=FALSE}
   load(file = "./Data/RGenerated/MedianFilteredData.RData")
   pen <- function(x) -length(x) #Equally penalizes every additional changepoint
-  window.size <- 180
+  window.size <- 120
   changepoints_medianf <- list()
 
   for (i in 1:15) {
@@ -573,11 +573,11 @@ save(changepoints_medianf,
 
 
 ### Using the Median Filtered Differenced Data {.tabset .tabset-fade}
-Here, we apply the ecp approach of Matterson and James (2014) on the **median filtered differenced data** (as opposed to the median filtered timeseries). For demonstration purpose, we use $m_{ecp} = 180$ below.  
+Here, we apply the ecp approach of Matterson and James (2014) on the **median filtered differenced data** (as opposed to the median filtered timeseries). For demonstration purpose, we use $m_{ecp} = 120$ below.  
 ```{r MCP_MedianFilteredDiffData, cache=TRUE, fig.align='center', results='asis', out.width='65%', message=FALSE}
   load(file = "./Data/RGenerated/MedianFilteredData.RData")
   pen <- function(x) -length(x) #Equally penalizes every additional changepoint
-  window.size <- 180
+  window.size <- 120
   changepoints_medianf_diff <- list()
 
   for (i in 1:15) {
@@ -640,11 +640,11 @@ save(changepoints_medianf_diff,
 
 
 ### Using the CUSUM of the Median Filtered Data {.tabset .tabset-fade}
-Here, we apply the ecp approach of Matterson and James (2014) on the **cusums of the median filtered data** (as opposed to the median filtered timeseries). For demonstration purpose, we use $m_{ecp} = 180$ below. 
+Here, we apply the ecp approach of Matterson and James (2014) on the **cusums of the median filtered data** (as opposed to the median filtered timeseries). For demonstration purpose, we use $m_{ecp} = 120$ below. 
 ```{r MCP_CUSUM, cache=TRUE, fig.align='center', results='asis', out.width='65%', message=FALSE}
 load(file = "./Data/RGenerated/CusumData.RData")
   pen <- function(x) -length(x) #Equally penalizes every additional changepoint
-  window.size <- 180
+  window.size <- 120
   changepoints_cusum <- list()
 
   for (i in 1:15) {
