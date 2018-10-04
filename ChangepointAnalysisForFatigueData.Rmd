@@ -504,7 +504,7 @@ save(subject1_cusum, subject2_cusum, subject3_cusum,
 # Multivariate Changepoint Detection
 To be filled later.
 
-## The Nonparameteric Approach of Matterson & James 
+## The Nonparameteric Approach of Matterson & James (ECP) 
 In this section, we will examine the use of the approach of [Matteson and James (2014)](https://amstat.tandfonline.com/doi/abs/10.1080/01621459.2013.849605) for multiple change point analysis of our trivariate data. Our analysis takes advantage of their **R** package titled *ecp*, which is described in more details in the following paper: [James and Matteson (2014)](https://cran.r-project.org/web/packages/ecp/vignettes/ecp.pdf). The multivariate changepoint method will be first tested using the median filtered data and then using the CUSUM of the median filtered data.
 
 ### Using the Median Filtered Data {.tabset .tabset-fade}
@@ -703,7 +703,7 @@ save(changepoints_cusum,
        file = "./Data/RGenerated/ECPChangePointsCUSUM.RData")
 ```
 
-## The Approach of Capizzi and Masarotto
+## The Approach of Capizzi and Masarotto (dbphase1)
 To compare the performance of the ECP approach, we also investigated using the approach of [Cappizi and Masarotto (2016)](https://amstat.tandfonline.com/doi/abs/10.1080/00401706.2016.1272494) for another nonparameteric multivariate changepoint analysis method. Similar to the *ecp approach*, we applied their methodology on the: (a) median filtered data; and (b) cusums of the median filtered data. The results are shown in the following subsections. **Note that we did not perform the analysis on the differences since we concluded that it was less informative than (a) and (b) based on our conclusions from Section 4.1.** 
 
 For the parameterization of the [Cappizi and Masarotto (2016)](https://amstat.tandfonline.com/doi/abs/10.1080/00401706.2016.1272494) approach, we used the default parameters of the [mphase1() function from the dphase1 package](https://cran.r-project.org/web/packages/dfphase1/dfphase1.pdf) with the exception of:  
@@ -830,6 +830,10 @@ Similar to the analysis in Section 4.1, we are using the window size of 120 ($m_
   save(changepoints_mph1_cusum,
        file = "./Data/RGenerated/ChangePointsCusumMphase1.RData")
 ```
+
+
+## Comments on the ECP and dfphase1 Methods
+To be filled later.
 
 # Things to Do Next
   (A) Validate the Changepoint results based on the Subjective Ratings of Fatigue.  
