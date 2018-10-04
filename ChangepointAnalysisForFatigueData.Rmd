@@ -453,14 +453,58 @@ save(subject1_medianf, subject2_medianf, subject3_medianf, subject4_medianf,
 ```
 
 
-## Applying the Median Filter Methodology on the CUSUM of the Features
-To be examined later.
+## Applying the Median Filter Methodology on the CUSUM of the Features {.tabset .tabset-fade}
+```{r CUSUM, fig.align='center', results='asis', out.width='65%', message=FALSE, cache=TRUE}
+  load(file = "./Data/RGenerated/MedianFilteredData.RData")
+  for (i in 1:15) {
+    df <- get(paste0("subject",i,"_medianf"))
+  means <- colMeans(df)
+  df[,2] <- cumsum(df[,2]-means[2])
+  df[,3] <- cumsum(df[,3]-means[3])
+  df[,4] <- cumsum(df[,4]-means[4])
+  assign(paste0("subject",i,"_cusum"), df)  
+    
+      cat('###',paste0("P", i), "{-}",'\n')
+      df_transformed <- melt(get(paste0("subject",i,"_cusum")),
+                         id.vars = "time.from.start",
+                         measure.vars=c("scaled.stride.len",
+                                        "scaled.stride.height",
+                                        "stride.duration"
+                                        )
+                         ) # ggplot data needs to be tall
+      
+      assign(paste0("g",i),
+         ggplot(data = df_transformed,
+                aes(x=time.from.start, y=value, group=variable,
+                    color=variable,shape=variable)) + 
+           geom_line() + theme_bw() + 
+           ggtitle("CUSUM of the Median Filtered Data") + 
+           theme(legend.position="none",
+                 #axis.text.x=element_text(angle=90,hjust=1),
+                 plot.title = element_text(hjust = 0.5)) +
+           facet_wrap(~variable,nrow=3, scales = "free_y") 
+         )
+      
+      print(get(paste0("g",i)))
+  
+  cat('\n')
+  
+  cat('<source> <p> The results from the analysis above can be found at: <a href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/CusumData.RData">CusumData.RData</a>. </p> </source>')
+  cat('\n \n')
+  }
+save(subject1_cusum, subject2_cusum, subject3_cusum,
+     subject4_cusum, subject5_cusum, subject6_cusum,
+     subject7_cusum, subject8_cusum, subject9_cusum,
+     subject10_cusum, subject11_cusum, subject12_cusum,
+     subject13_cusum, subject14_cusum, subject15_cusum,
+       file = "./Data/RGenerated/CusumData.RData")
+```
 
 
 # Multivariate Changepoint Detection
 To be filled later.
 
-## The Nonparameteric Approach of Matterson and James for Multiple Changepoint Detection 
+## The Nonparameteric Approach of Matterson & James 
 In this section, we will examine the use of the approach of [Matteson and James (2014)](https://amstat.tandfonline.com/doi/abs/10.1080/01621459.2013.849605) for multiple change point analysis of our trivariate data. Our analysis takes advantage of their **R** package titled *ecp*, which is described in more details in the following paper: [James and Matteson (2014)](https://cran.r-project.org/web/packages/ecp/vignettes/ecp.pdf). The multivariate changepoint method will be first tested using the median filtered data and then using the CUSUM of the median filtered data.
 
 ### Using the Median Filtered Data {.tabset .tabset-fade}
@@ -594,10 +638,76 @@ save(changepoints_medianf_diff,
        file = "./Data/RGenerated/ECPChangePointsDiffMFData.RData")
 ```
 
+
+### Using the CUSUM of the Median Filtered Data {.tabset .tabset-fade}
+Here, we apply the ecp approach of Matterson and James (2014) on the **cusums of the median filtered data** (as opposed to the median filtered timeseries). For demonstration purpose, we use $m_{ecp} = 180$ below. 
+```{r MCP_CUSUM, cache=TRUE, fig.align='center', results='asis', out.width='65%', message=FALSE}
+load(file = "./Data/RGenerated/CusumData.RData")
+  pen <- function(x) -length(x) #Equally penalizes every additional changepoint
+  window.size <- 180
+  changepoints_cusum <- list()
+
+  for (i in 1:15) {
+      df <- get(paste0("subject",i,"_cusum"))
+      # Making the DF divisiable by the window size
+      # (i.e., we are removing the remainder so that our chunks are equally sized)
+      rows.to.keep <- nrow(df[,2:4]) %/% window.size
+      remainder <- nrow(df[,2:4]) %% window.size
+      df.MultivariateChangepoint<- df[1:(nrow(df)-remainder),
+                                      2:4] %>% as.matrix()
+      
+      # Utilizing the e.agglo() from the ecp package
+      mem <- rep(1:rows.to.keep, each=window.size)
+      y = e.agglo(X=df.MultivariateChangepoint,
+                  member= mem,
+                  alpha = 1,
+                  penalty = pen)
+      changepoints_cusum[[i]] <- y$estimates
+      
+      cat('####',paste0("P", i), "{-}",'\n')
+      df_transformed <- melt(get(paste0("subject",i,"_cusum")),
+                         id.vars = "time.from.start",
+                         measure.vars=c("scaled.stride.len",
+                                        "scaled.stride.height",
+                                        "stride.duration"
+                                        )
+                         ) # ggplot data needs to be tall
+      
+      assign(paste0("g",i),
+         ggplot(data = df_transformed,
+                aes(x=time.from.start, y=value, group=variable,
+                    color=variable,shape=variable)) + 
+           geom_line() + theme_bw() + 
+           ggtitle("Changepoints for the CUSUMs of the Median Filtered Data (vertical black lines)") + 
+           theme(legend.position="none",
+                 #axis.text.x=element_text(angle=90,hjust=1),
+                 plot.title = element_text(hjust = 0.5)) +
+           facet_wrap(~variable,nrow=3, scales = "free_y") +
+           geom_vline(xintercept= y$estimates)
+         )
+      
+      print(get(paste0("g",i)))
+  
+  cat('\n')
+  
+  cat(paste0('<source> <p> Based on the <b>ecp package</b>, the number of changepoints for the cusums of the median filtered data for participant ', i,
+             ' is equal to: ',
+             length(changepoints_cusum[[i]]),
+             '. These changepoints are located at: ',
+             paste(changepoints_cusum[[i]], collapse = ", "),
+             '. The results from the analysis above can be found at: <a href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/ECPChangePointsCUSUM.RData">ECPChangePointsCUSUM.RData</a>. </p> </source>')
+      )
+  cat('\n \n')
+  }
+save(changepoints_cusum,
+       file = "./Data/RGenerated/ECPChangePointsCUSUM.RData")
+```
+
+
 # Things to Do Next
   (A) Validate the Changepoint results based on the Subjective Ratings of Fatigue.  
   (B) Try to come up with a general diagnosis/understanding of how fatigue develops (e.g., we start with a ramp up phase, then steady state, then fatigue starting, and then person is totally fatigued).  
-  (C) See if the insights are consistent if we did CUSUM.  
+  (C) See if the insights from the ECP package are consistent with the approach of Giovanna and Guido.  
 
 
   
