@@ -1,10 +1,10 @@
 ---
 title: "Changepoint Analysis For Fatigue Data"
 author:
-  - Amir Baghdadi^[Department of Mechanical and Aerospace Engineering, University at Buffalo]
+  - Amir Baghdadi^[Department of Mechanical and Aerospace Engineering, University at Buffalo.]
   - Lora A. Cavuoto^[Department of Industrial and Systems Engineering, University at Buffalo]
   - Allison Jones-Farmer^[Farmer School of Business, Miami University]
-  - Fadel M. Megahed^[Farmer School of Business, Miami University.  This author can be reached by email at [fmegahed@miamioh.edu](mailto:fmegahed@miamioh.edu).]
+  - Fadel M. Megahed^[Farmer School of Business, Miami University.  *Corresponding author*  [fmegahed@miamioh.edu](mailto:fmegahed@miamioh.edu).]
 
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
@@ -42,14 +42,14 @@ The reader can **show** any code chunk by clicking on the *code* button. We chos
 
 The snippet below documents the list of **R** libraries that were used in this research. For convenience, we used the pacman package since it allows for installing/loading the needed libraries in one step.
 
-```{r, load_libraries, message=FALSE, cache=TRUE, error=FALSE}
+```{r, load_libraries, message=FALSE, cache=TRUE, error=FALSE, warning=FALSE}
 rm(list = ls()) # clear global environment
 graphics.off() # close all graphics
 library(pacman) # needs to be installed first
 p_load(R.matlab, plotly, extrafont, grDevices, gridExtra,
        dplyr, stringr, tidyverse, utils, reshape2,
        anomalize, forecast, MVN, fractal,
-       ecp)
+       ecp, dfphase1)
 ```
 
 In the snippet below, we extract the 15 ".mat" files in the [GitHub repository](https://github.com/fmegahed/fatigue-changepoint/tree/master/Data/Raw) (where we loaded the data to allow for the reproduction of our work). Note that these files were originally produced in [Baghdadi et al., 2018](https://www.tandfonline.com/doi/abs/10.1080/00140139.2018.1442936?). Then, we perform several transformation steps: (a) extracting the data for the first three columns in the matlab arrays; and (b) computing three kinematic features from the data corresponding to these columns. Due to the differences between Matlab and R, this requires two nested *for* loops. The outer loop increments over the number of subjects, while the inner loop increments based on the different number of rows of data for each subject. Please see the comments within the code chunk for more details. 
@@ -508,7 +508,7 @@ To be filled later.
 In this section, we will examine the use of the approach of [Matteson and James (2014)](https://amstat.tandfonline.com/doi/abs/10.1080/01621459.2013.849605) for multiple change point analysis of our trivariate data. Our analysis takes advantage of their **R** package titled *ecp*, which is described in more details in the following paper: [James and Matteson (2014)](https://cran.r-project.org/web/packages/ecp/vignettes/ecp.pdf). The multivariate changepoint method will be first tested using the median filtered data and then using the CUSUM of the median filtered data.
 
 ### Using the Median Filtered Data {.tabset .tabset-fade}
-To apply the *ecp approach of Matterson and James (2014)* on the **median filtered data**, we need to use a window size (which reflects the smallest size of a shift that is to be detected). From a biomechanics perspective, we expect that the change of performance due to fatigue will be sustained at least for several minutes (until the person adapts and/or rests). Thus, the size of the window ($m_{ecp}$) should be $m_{ecp} \ge 60$. In our analysis, we tried the following window sizes: 60, 120, 180, 300, and 600. For most of the participants, the number and/or location of change were almost similar. For demonstration purpose, we use $m_{ecp} = 120$ below.  
+To apply the *ecp approach of [Matteson and James (2014)](https://amstat.tandfonline.com/doi/abs/10.1080/01621459.2013.849605)* on the **median filtered data**, we need to use a window size (which reflects the smallest size of a shift that is to be detected). From a biomechanics perspective, we expect that the change of performance due to fatigue will be sustained at least for several minutes (until the person adapts and/or rests). Thus, the size of the window ($m_{ecp}$) should be $m_{ecp} \ge 60$. In our analysis, we tried the following window sizes: 60, 120, 180, 300, and 600. For most of the participants, the number and/or location of change were almost similar. For demonstration purpose, we use $m_{ecp} = 120$ below.  
 ```{r MCP_MedianFilteredData, cache=TRUE, fig.align='center', results='asis', out.width='65%', message=FALSE}
   load(file = "./Data/RGenerated/MedianFilteredData.RData")
   pen <- function(x) -length(x) #Equally penalizes every additional changepoint
@@ -573,7 +573,7 @@ save(changepoints_medianf,
 
 
 ### Using the Median Filtered Differenced Data {.tabset .tabset-fade}
-Here, we apply the ecp approach of Matterson and James (2014) on the **median filtered differenced data** (as opposed to the median filtered timeseries). For demonstration purpose, we use $m_{ecp} = 120$ below.  
+Here, we apply the ecp approach of [Matteson and James (2014)](https://amstat.tandfonline.com/doi/abs/10.1080/01621459.2013.849605) on the **median filtered differenced data** (as opposed to the median filtered timeseries). For demonstration purpose, we use $m_{ecp} = 120$ below.  
 ```{r MCP_MedianFilteredDiffData, cache=TRUE, fig.align='center', results='asis', out.width='65%', message=FALSE}
   load(file = "./Data/RGenerated/MedianFilteredData.RData")
   pen <- function(x) -length(x) #Equally penalizes every additional changepoint
@@ -703,11 +703,137 @@ save(changepoints_cusum,
        file = "./Data/RGenerated/ECPChangePointsCUSUM.RData")
 ```
 
+## The Approach of Capizzi and Masarotto
+To compare the performance of the ECP approach, we also investigated using the approach of [Cappizi and Masarotto (2016)](https://amstat.tandfonline.com/doi/abs/10.1080/00401706.2016.1272494) for another nonparameteric multivariate changepoint analysis method. Similar to the *ecp approach*, we applied their methodology on the: (a) median filtered data; and (b) cusums of the median filtered data. The results are shown in the following subsections. **Note that we did not perform the analysis on the differences since we concluded that it was less informative than (a) and (b) based on our conclusions from Section 4.1.** 
+
+For the parameterization of the [Cappizi and Masarotto (2016)](https://amstat.tandfonline.com/doi/abs/10.1080/00401706.2016.1272494) approach, we used the default parameters of the [mphase1() function from the dphase1 package](https://cran.r-project.org/web/packages/dfphase1/dfphase1.pdf) with the exception of:  
+  -- *isolated = FALSE* since we do not expect shifts to last only 120 strides.  
+  -- *plot = FALSE* since we would like to use *ggplot package* instead of the default plot function.
+
+Similar to the analysis in Section 4.1, we are using the window size of 120 ($m_{dphase1}=120$). This allows us to compare the results (in terms of the number of detected changepoints and whether these match better from a graphical perspective).
+
+### Using the Median Filtered Data {.tabset .tabset-fade}
+```{r MPH1_MF, cache=TRUE, fig.align='center', results='asis', out.width='65%', message=FALSE}
+  load(file = "./Data/RGenerated/MedianFilteredData.RData")
+  changepoints_mph1_mf <- list()
+
+  for (i in 1:15) {
+    df <- get(paste0("subject",i,"_medianf"))
+    window.size <- 120
+    rows.to.keep <- nrow(df[,2:4]) %/% window.size
+    remainder <- nrow(df[,2:4]) %% window.size
+    df.MultivariateChangepoint<- df[1:(nrow(df)-remainder),
+                                    2:4]
+    dataholder.array <- t(df.MultivariateChangepoint) %>% 
+                          array(c(3, window.size, rows.to.keep))
+    y <- mphase1(dataholder.array,
+                 isolated=FALSE, plot = FALSE)
+    mcp <- y$alasso[2]*window.size # to change from the window number to time.from.start
+    mcp <- mcp[order(mcp[,1]),] # to order the changepoints by time
+    changepoints_mph1_mf[[i]] <- y
+    
+     cat('####',paste0("P", i), "{-}",'\n')
+  df_transformed <- melt(get(paste0("subject",i,"_medianf")),
+                         id.vars = "time.from.start",
+                         measure.vars=c("scaled.stride.len",
+                                        "scaled.stride.height",
+                                        "stride.duration"
+                         )
+  ) # ggplot data needs to be tall
+  
+  assign(paste0("g",i),
+         ggplot(data = df_transformed,
+                aes(x=time.from.start, y=value, group=variable,
+                    color=variable,shape=variable)) + 
+           geom_line() + theme_bw() + 
+           ggtitle("Changepoints for the Median Filtered Data (w/ dfphase1 package)") + 
+           theme(legend.position="none",
+                 #axis.text.x=element_text(angle=90,hjust=1),
+                 plot.title = element_text(hjust = 0.5)) +
+           facet_wrap(~variable,nrow=3, scales = "free_y") +
+           geom_vline(xintercept= mcp)
+  )
+  
+  print(get(paste0("g",i)))
+  
+ cat('\n')
+  
+  cat(paste0('<source> <p> Based on the <b>dfphase1 package</b>, the number of changepoints for the cusums of the median filtered data for participant ', i,
+             ' is equal to: ',
+             length(mcp),
+             '. These changepoints are located at: ',
+             paste(mcp, collapse = ", "),
+             '. The results from the analysis above can be found at: <a href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/ChangePointsMedianFilterMphase1.RData">ChangePointsMedianFilterMphase1.RData</a>. </p> </source>')
+  )
+  cat('\n \n')
+  }
+  save(changepoints_mph1_mf,
+       file = "./Data/RGenerated/ChangePointsMedianFilterMphase1.RData")
+```
+
+
+### Using the CUSUM Data {.tabset .tabset-fade}
+```{r MPH1_CUSUM, cache=TRUE, fig.align='center', results='asis', out.width='65%', message=FALSE}
+  load(file = "./Data/RGenerated/CusumData.RData")
+  changepoints_mph1_cusum <- list()
+
+  for (i in 1:15) {
+    df <- get(paste0("subject",i,"_cusum"))
+    window.size <- 120
+    rows.to.keep <- nrow(df[,2:4]) %/% window.size
+    remainder <- nrow(df[,2:4]) %% window.size
+    df.MultivariateChangepoint<- df[1:(nrow(df)-remainder),
+                                    2:4]
+    dataholder.array <- t(df.MultivariateChangepoint) %>% 
+                          array(c(3, window.size, rows.to.keep))
+    y <- mphase1(dataholder.array,
+                 isolated=FALSE, plot = FALSE)
+    mcp <- y$alasso[2]*window.size # to change from the window number to time.from.start
+    mcp <- mcp[order(mcp[,1]),] # to order the changepoints by time
+    changepoints_mph1_cusum[[i]] <- y
+    
+     cat('####',paste0("P", i), "{-}",'\n')
+  df_transformed <- melt(get(paste0("subject",i,"_cusum")),
+                         id.vars = "time.from.start",
+                         measure.vars=c("scaled.stride.len",
+                                        "scaled.stride.height",
+                                        "stride.duration"
+                         )
+  ) # ggplot data needs to be tall
+  
+  assign(paste0("g",i),
+         ggplot(data = df_transformed,
+                aes(x=time.from.start, y=value, group=variable,
+                    color=variable,shape=variable)) + 
+           geom_line() + theme_bw() + 
+           ggtitle("Changepoints for the CUSUMs of the Median Filtered Data (w/ dfphase1 package)") + 
+           theme(legend.position="none",
+                 #axis.text.x=element_text(angle=90,hjust=1),
+                 plot.title = element_text(hjust = 0.5)) +
+           facet_wrap(~variable,nrow=3, scales = "free_y") +
+           geom_vline(xintercept= mcp)
+  )
+  
+  print(get(paste0("g",i)))
+  
+ cat('\n')
+  
+  cat(paste0('<source> <p> Based on the <b>dfphase1 package</b>, the number of changepoints for the cusums of the median filtered data for participant ', i,
+             ' is equal to: ',
+             length(mcp),
+             '. These changepoints are located at: ',
+             paste(mcp, collapse = ", "),
+             '. The results from the analysis above can be found at: <a href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/ChangePointsCusumMphase1.RData">ChangePointsCusumMphase1.RData</a>. </p> </source>')
+  )
+  cat('\n \n')
+  }
+  save(changepoints_mph1_cusum,
+       file = "./Data/RGenerated/ChangePointsCusumMphase1.RData")
+```
 
 # Things to Do Next
   (A) Validate the Changepoint results based on the Subjective Ratings of Fatigue.  
-  (B) Try to come up with a general diagnosis/understanding of how fatigue develops (e.g., we start with a ramp up phase, then steady state, then fatigue starting, and then person is totally fatigued).  
-  (C) See if the insights from the ECP package are consistent with the approach of Giovanna and Guido.  
+  (B) Try to come up with a general diagnosis/understanding of how fatigue develops (e.g., we start with a ramp up phase, then steady state, then fatigue starting, and then person is totally fatigued).
 
 
   
