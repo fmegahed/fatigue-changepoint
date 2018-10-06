@@ -855,15 +855,12 @@ In this section, we perform the following tasks:
 (C) Utilize the [e.divisive() from the ecp package](https://cran.r-project.org/web/packages/ecp/vignettes/ecp.pdf) to obtain the changepoints for the Borg Ratings. Note that this function is the univariate approach for the multiple changepoint method examined in Section 4.1. 
 
 
+```{r RPE_Analysis, cache=TRUE, fig.align='center', results='asis', out.width='65%', message=FALSE}
+RatingThresh = 13  # based on Maman et al. 2017
+  
+```
+## Comments
 From B and C, we are hoping to develop a general diagnosis/understanding of how fatigue develops (e.g., we start with a ramp up phase, then steady state, then fatigue starting, and then person is totally fatigued).
-
-
-
-
-
-
-
-
 
 
 <!-- # Things to Do Next -->
