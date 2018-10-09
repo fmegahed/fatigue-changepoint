@@ -534,12 +534,13 @@ for (i in 1:15) {
   cumsum_RPE[,1] <- dataholder[,1]
   cumsum_RPE[,2] <- paste0(dataholder[,2],".CUSUM")
   cumsum_RPE[,3] <- cumsum(dataholder[,3]-13)
+  cumsum_RPE <- na.omit(cumsum_RPE)
   
   # -------- Calculation of Fatigue based on RPE>= 13 -----------------
   fatigue_from_RPE_threshold <- which(RPE[,i+1]>=RatingThresh) %>% 
                               min() # returns window number
   changepoints_subj_thr[[i]] <- RPE[fatigue_from_RPE_threshold,1]
-  df_RPE<-data.frame(d1=RPE[1],t1=RPE[i+1]) # to make dataframe of subjective ratings for ggplot
+  df_RPE<-data.frame(d1=RPE[1],t1=RPE[i+1]) %>% na.omit() # to make dataframe of subjective ratings for ggplot
   
   #------- Estimation of Fatigue Changepoints based on ECP of the RPE Data --
   y <- e.divisive(df_RPE,min.size = 2)$estimates
@@ -567,9 +568,9 @@ for (i in 1:15) {
   df_transformed <- rbind(df_transformed,df_RPE_transformed[correct_subject_rows,],
                         cumsum_RPE)
   # The Changepoints for the PCA Data based on e.divisive
-  pca_df <- pca_subjects[[i]]
-  z <- e.divisive(pca_df[,c(1,3)],min.size = 120, sig.lvl = 0.001)$estimates
-  changepoints_pca_ecp[[i]] <- pca_df[z[2:(length(z)-1)],]
+  # pca_df <- pca_subjects[[i]]
+  # z <- e.divisive(pca_df[,c(1,3)],min.size = 120, sig.lvl = 0.001)$estimates
+  # changepoints_pca_ecp[[i]] <- pca_df[z[2:(length(z)-1)],]
   
   cat('###',paste0("P", i), "{-}",'\n')
   assign(paste0("g",i), biplot(pca_dataholder, 
@@ -577,7 +578,7 @@ for (i in 1:15) {
   print(get(paste0("g",i)))
  
   cat("\n")
-  pca_vector <- pca_df[,c(1)]
+  # pca_vector <- pca_df[,c(1)]
   
   assign(paste0("h",i),
         ggplot(data = df_transformed,
@@ -587,8 +588,8 @@ for (i in 1:15) {
           scale_colour_manual(values = c("maroon","black","grey40")) +
           facet_wrap(~variable,nrow=3, scales = "free_y") +
           # labs(title = paste("A paneled time-series plot for Participant",i)) + 
-          geom_vline(xintercept= pca_vector, 
-                     show.legend = T, size=0.5) + 
+          # geom_vline(xintercept= pca_vector, 
+          #            show.legend = T, size=0.5) + 
           geom_vline(xintercept= changepoints_subj_thr[[i]],
                      linetype="solid", color="steelblue1",
                      show.legend = T, size=2) +
@@ -611,9 +612,9 @@ for (i in 1:15) {
   
     cat(paste0('<source> <p> Based on the <b>ecp package, the number of changepoints for the First PC of the median filtered data for participant ', i,
              ' is equal to: ',
-             length(changepoints_pca_ecp[[i]]),
-             '. These changepoints are located at: ',
-             paste(changepoints_pca_ecp[[i]], collapse = ", "),
+             # length(changepoints_pca_ecp[[i]]),
+             # '. These changepoints are located at: ',
+             # paste(changepoints_pca_ecp[[i]], collapse = ", "),
              '.  <font color= #63B8FF> The threshold based changepoint in the subjective RPE is located at: ',
              paste(changepoints_subj_thr[[i]]),
              '. </font> </b> In addition, <b> <font color=#CCCCCC> the number of changepoints based on the RPE values for this subject is equal to: ',
@@ -1021,6 +1022,8 @@ for (i in 1:15) {
   cumsum_RPE[,1] <- dataholder[,1]
   cumsum_RPE[,2] <- paste0(dataholder[,2],".CUSUM")
   cumsum_RPE[,3] <- cumsum(dataholder[,3]-13)
+  cumsum_RPE <- na.omit(cumsum_RPE)
+  
   df_transformed <- rbind(df_transformed,df_RPE_transformed[correct_subject_rows,],
                             cumsum_RPE)
   
@@ -1028,7 +1031,7 @@ for (i in 1:15) {
   fatigue_from_RPE_threshold <- which(RPE[,i+1]>=RatingThresh) %>% 
                               min() # returns window number
   changepoints_subj_thr[[i]] <- RPE[fatigue_from_RPE_threshold,1]
-  df_RPE<-data.frame(d1=RPE[1],t1=RPE[i+1]) # to make dataframe of subjective ratings for ggplot
+  df_RPE<-data.frame(d1=RPE[1],t1=RPE[i+1]) %>% na.omit() # to make dataframe of subjective ratings for ggplot
   
   #------- Estimation of Fatigue Changepoints based on ECP of the RPE Data --
   y <- e.divisive(df_RPE,min.size = 2)$estimates
@@ -1141,13 +1144,14 @@ for (i in 1:15) {
   cumsum_RPE[,1] <- dataholder[,1]
   cumsum_RPE[,2] <- paste0(dataholder[,2],".CUSUM")
   cumsum_RPE[,3] <- cumsum(dataholder[,3]-13)
+  cumsum_RPE <- na.omit(cumsum_RPE)
   
   
   # -------- Calculation of Fatigue based on RPE>= 13 -----------------
   fatigue_from_RPE_threshold <- which(RPE[,i+1]>=RatingThresh) %>% 
                               min() # returns window number
   changepoints_subj_thr[[i]] <- RPE[fatigue_from_RPE_threshold,1]
-  df_RPE<-data.frame(d1=RPE[1],t1=RPE[i+1]) # to make dataframe of subjective ratings for ggplot
+  df_RPE<-data.frame(d1=RPE[1],t1=RPE[i+1]) %>% na.omit() # to make dataframe of subjective ratings for ggplot
   
   #------- Estimation of Fatigue Changepoints based on ECP of the RPE Data --
   y <- e.divisive(df_RPE,min.size = 2)$estimates
