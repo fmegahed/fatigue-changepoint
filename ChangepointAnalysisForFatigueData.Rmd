@@ -497,6 +497,147 @@ save(subject1_cusum, subject2_cusum, subject3_cusum,
 ```
 
 
+# Univariate Changepoint Detection 
+A common approach for changepoint detection is to project the multivariate problem into a univariate-space using *principal component analysis*. Then, apply a univariate changepoint detection approach on the problem. We examine this approach in this section.
+
+## Applied to the PCs of the Median Filtered Kinematic Features {.tabset .tabset-fade}
+When we tested this, we found the following:  
+  (A) The e.divise() produces a lot of changepoints with the deafult sig.level;  
+  (B) Number of changepoints is still large with sig.lvl = 0.001;  
+  
+For this reason, we do not think that this approach is promising. We will move on to the multivariate approach.
+
+```{r pca, ig.align='center', results='asis', out.width='65%', message=FALSE, cache=TRUE}
+RatingThresh <- 13  # based on Maman et al. 2017
+RPE = read.csv("https://raw.githubusercontent.com/fmegahed/fatigue-changepoint/master/Data/Raw/RPE.csv") # to read subjective rating of RPE data from GitHub'
+colnames(RPE)[1] <- "time.from.start"
+df_RPE_transformed <- melt(RPE,
+                           id.vars = "time.from.start",
+                           measure.vars = colnames(RPE)[2:16])
+df_RPE_transformed[,2] <- paste0(df_RPE_transformed[,2],".RPE")
+# to load previously generated data and changepoints 
+load(file = "./Data/RGenerated/MedianFilteredData.RData")
+pca_subjects <- list()
+pca_subjects_loadings <- list()
+pc_prop_var_explained <- list()
+changepoints_pca_ecp <- list()
+changepoints_subj_thr <- list()
+changepoints_subj_ecp <- list()
+changepoints_cusum_subj_ecp <- list()
+
+for (i in 1:15) {
+  cumsum_RPE <- data.frame(matrix(ncol=3, nrow=19)) # need to initialize every time
+  colnames(cumsum_RPE) <- c("time.from.start","variable","value")
+  correct_subject_rows <- which(df_RPE_transformed[,2]==paste0("Subject.",i,".RPE"))
+  dataholder <- df_RPE_transformed[correct_subject_rows,]
+  # Computing the CUSUMs of the RPEs
+  cumsum_RPE[,1] <- dataholder[,1]
+  cumsum_RPE[,2] <- paste0(dataholder[,2],".CUSUM")
+  cumsum_RPE[,3] <- cumsum(dataholder[,3]-13)
+  
+  # -------- Calculation of Fatigue based on RPE>= 13 -----------------
+  fatigue_from_RPE_threshold <- which(RPE[,i+1]>=RatingThresh) %>% 
+                              min() # returns window number
+  changepoints_subj_thr[[i]] <- RPE[fatigue_from_RPE_threshold,1]
+  df_RPE<-data.frame(d1=RPE[1],t1=RPE[i+1]) # to make dataframe of subjective ratings for ggplot
+  
+  #------- Estimation of Fatigue Changepoints based on ECP of the RPE Data --
+  y <- e.divisive(df_RPE,min.size = 2)$estimates
+  fatigue_from_ecp_changepoint = y[2:(length(y)-1)] # removing the first and last points as trivials changepoints
+  changepoints_subj_ecp[[i]] <- df_RPE[fatigue_from_ecp_changepoint,1]
+  
+  # ------ Repeating the above analysis for the CUSUMs of the RPE --------
+  y_cumsum <- e.divisive(cumsum_RPE[,c(1,3)],min.size = 2)$estimates
+  fatigue_ecp_CusumRPE <- y_cumsum[2:length(y_cumsum)-1]
+  changepoints_cusum_subj_ecp[[i]] <- cumsum_RPE[fatigue_ecp_CusumRPE, 1]
+  
+  # ------Computing the First Principal Component and the loadings for First PC ---
+  df <- paste0("subject",i,"_medianf") %>% get()
+  pca_dataholder <-  prcomp(df[,2:4], center=TRUE, scale. = T) # Scale <- Standardize Vars
+  pca_subjects_loadings[[i]] <- pca_dataholder$rotation[,1] # Weights for First PC
+  # Understanding the % Variation Explained by the First PC
+  pc_std <- pca_dataholder$sdev
+  pc_var <- pc_std^2
+  pc_prop_var_explained[[i]] <- round(pc_var[1]/sum(pc_var),3)
+  #  Storing the Data for First PC rotated values
+  pca_subjects[[i]] <- data.frame(time.from.start= df[,1], 
+                                variable= "PC1.Values",
+                                value =pca_dataholder$x[,1]) # First PC
+  df_transformed <- pca_subjects[[i]]
+  df_transformed <- rbind(df_transformed,df_RPE_transformed[correct_subject_rows,],
+                        cumsum_RPE)
+  # The Changepoints for the PCA Data based on e.divisive
+  pca_df <- pca_subjects[[i]]
+  z <- e.divisive(pca_df[,c(1,3)],min.size = 120, sig.lvl = 0.001)$estimates
+  changepoints_pca_ecp[[i]] <- pca_df[z[2:(length(z)-1)],]
+  
+  cat('###',paste0("P", i), "{-}",'\n')
+  assign(paste0("g",i), biplot(pca_dataholder, 
+                               scale = 0))
+  print(get(paste0("g",i)))
+ 
+  cat("\n")
+  pca_vector <- pca_df[,c(1)]
+  
+  assign(paste0("h",i),
+        ggplot(data = df_transformed,
+               aes(x=time.from.start, y=value, colour = variable)) + 
+          geom_line(size=1) +
+          theme_bw() +
+          scale_colour_manual(values = c("maroon","black","grey40")) +
+          facet_wrap(~variable,nrow=3, scales = "free_y") +
+          # labs(title = paste("A paneled time-series plot for Participant",i)) + 
+          geom_vline(xintercept= pca_vector, 
+                     show.legend = T, size=0.5) + 
+          geom_vline(xintercept= changepoints_subj_thr[[i]],
+                     linetype="solid", color="steelblue1",
+                     show.legend = T, size=2) +
+          geom_vline(xintercept= changepoints_subj_ecp[[i]],
+                     linetype="dotted", color="gray80",
+                     show.legend =T, size=2) +
+          geom_vline(xintercept= changepoints_cusum_subj_ecp[[i]],
+                     linetype="dashed", color="orange1",
+                     show.legend =T, size=3) +
+          theme(legend.position="none",
+                 plot.title = element_text(hjust = 0.5))
+      )
+      
+    print(get(paste0("h",i)))
+  
+    cat('\n \n')
+  
+    cat(paste0('<source> <p> In the above figure, the colored vertical lines correspond to the following.  First, the <b> black  lines are used to denote the changepoints based on the non-parameteric, univariate, ECP approach based on the e.divisive(min.size=2) on the First Principal Component of the Kinematic Features. </b> Second, the <font color= #63B8FF> <b>steelblue line  correspond to the time from start in seconds, when the subject has a RPE that equals or exceeds 13. </b> </font> Note that we only indicate the first occurence when the RPE>=13 on the graphs. Third, the <b> <font color=#CCCCCC> gray lines  denote the univariate, nonparametric changepoints obtained from applying the e.divisive() on the RPE values from the subject. </font> </b>',
+'. Fourth, the <b> <font color=#FFA500> orange lines  are used to denote the univariate, nonparametric changepoints obtained from applying the e.divisive() on the CUSUM of the RPE values. </font> </b> \n \n'))
+  
+    cat(paste0('<source> <p> Based on the <b>ecp package, the number of changepoints for the First PC of the median filtered data for participant ', i,
+             ' is equal to: ',
+             length(changepoints_pca_ecp[[i]]),
+             '. These changepoints are located at: ',
+             paste(changepoints_pca_ecp[[i]], collapse = ", "),
+             '.  <font color= #63B8FF> The threshold based changepoint in the subjective RPE is located at: ',
+             paste(changepoints_subj_thr[[i]]),
+             '. </font> </b> In addition, <b> <font color=#CCCCCC> the number of changepoints based on the RPE values for this subject is equal to: ',
+             length(changepoints_subj_ecp[[i]]),
+             ". These changepoints are located at: ",
+             paste(changepoints_subj_ecp[[i]], collapse = ", "),
+             ". </font> </b> Similar to our previous changepoint analysis, we also obtained the changepoints for the CUSUMs of the RPEs. <b> <font color=#FFA500> The number of these changepoints is equal to: ",
+             length(changepoints_cusum_subj_ecp[[i]]),
+             ". These changepoints are located at: ",
+             paste(changepoints_cusum_subj_ecp[[i]], collapse = ", "),
+             '. </b> </font> The results from the analysis above can be found at: <a href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/PCAChangepointsRPE.RData">PCAChangepointsRPE.RData</a>. </p> </source>')
+      )
+  
+  cat('\n \n')
+}
+
+save(pca_subjects, pca_subjects_loadings, pc_prop_var_explained,
+     changepoints_pca_ecp, 
+     changepoints_subj_thr, changepoints_subj_ecp, changepoints_cusum_subj_ecp,
+     file = "./Data/RGenerated/PCAChangepointsRPE.RData.RData")
+
+```
+
+
 # Multivariate Changepoint Detection
 To be filled later.
 
@@ -728,13 +869,13 @@ Notes:
                           array(c(3, window.size, rows.to.keep))
     y <- mphase1(dataholder.array,
                  isolated=FALSE, plot = FALSE)
-    mcp <- y$alasso[2]*window.size # to change from the window number to time.from.start
-    mcp <- mcp[order(mcp[,1]),] # to order the changepoints by time
+    mcp <- (df[unlist(y$alasso[2]),1]*window.size) %>% round(digits = 0)
+    mcp <- mcp[order(mcp)]
     mcp <- (mcp - window.size) + 1 # to make the change point at the begining of the period and not end (to be similar to the ecp method)
     changepoints_mph1_mf[[i]] <- y
     
      cat('####',paste0("P", i), "{-}",'\n')
-  df_transformed <- melt(get(paste0("subject",i,"_medianf")),
+    df_transformed <- melt(get(paste0("subject",i,"_medianf")),
                          id.vars = "time.from.start",
                          measure.vars=c("scaled.stride.len",
                                         "scaled.stride.height",
@@ -789,8 +930,8 @@ Notes:
                           array(c(3, window.size, rows.to.keep))
     y <- mphase1(dataholder.array,
                  isolated=FALSE, plot = FALSE)
-    mcp <- y$alasso[2]*window.size # to change from the window number to time.from.start
-    mcp <- mcp[order(mcp[,1]),] # to order the changepoints by time
+    mcp <- (df[unlist(y$alasso[2]),1]*window.size) %>% round(digits = 0)
+    mcp <- mcp[order(mcp)]
     mcp <- (mcp - window.size) + 1 # to make the change point at the begining of the period and not end (to be similar to the ecp method)
     changepoints_mph1_cusum[[i]] <- y
     
@@ -847,7 +988,7 @@ In addition, from the analysis, the changepoints based on the CUSUM of the media
 Throughout the experiments, participants provided their subjective ratings every 10 minutes. The ratings were based on the [Borg 6-20 RPE scale](https://www.tandfonline.com/doi/abs/10.1080/00140139.2018.1442936). Recent literature on fatigue detection suggests that a rating of 13 can be used to estimate the onset of fatigue (see [Maman et al. (2017)](https://www.sciencedirect.com/science/article/pii/S0003687017300261) for a detailed analysis). The subjective ratings for each participant can be accessed at: [subjective-ratings-raw](https://github.com/fmegahed/fatigue-changepoint/tree/master/Data/Raw).
 
 
-## Plots with the MF Data and their Changepoints{.tabset .tabset-fade}
+## Plots with the Median Filtered Data and their Changepoints {.tabset .tabset-fade}
 In this section, we perform the following tasks:  
 
 (A) EDA, where we overlay the subjective ratings with the **Median Filtered changepoints**;
@@ -874,39 +1015,32 @@ changepoints_cusum_subj_ecp <- list()
 for (i in 1:15) {
   cumsum_RPE <- data.frame(matrix(ncol=3, nrow=19)) # need to initialize every time
   colnames(cumsum_RPE) <- c("time.from.start","variable","value")
+  correct_subject_rows <- which(df_RPE_transformed[,2]==paste0("Subject.",i,".RPE"))
+  dataholder <- df_RPE_transformed[correct_subject_rows,]
+  # Computing the CUSUMs of the RPEs
+  cumsum_RPE[,1] <- dataholder[,1]
+  cumsum_RPE[,2] <- paste0(dataholder[,2],".CUSUM")
+  cumsum_RPE[,3] <- cumsum(dataholder[,3]-13)
+  
+  # -------- Calculation of Fatigue based on RPE>= 13 -----------------
+  fatigue_from_RPE_threshold <- which(RPE[,i+1]>=RatingThresh) %>% 
+                              min() # returns window number
+  changepoints_subj_thr[[i]] <- RPE[fatigue_from_RPE_threshold,1]
+  df_RPE<-data.frame(d1=RPE[1],t1=RPE[i+1]) # to make dataframe of subjective ratings for ggplot
+  
+  #------- Estimation of Fatigue Changepoints based on ECP of the RPE Data --
+  y <- e.divisive(df_RPE,min.size = 2)$estimates
+  fatigue_from_ecp_changepoint = y[2:(length(y)-1)] # removing the first and last points as trivials changepoints
+  changepoints_subj_ecp[[i]] <- df_RPE[fatigue_from_ecp_changepoint,1]
+  
+  # ------ Repeating the above analysis for the CUSUMs of the RPE --------
+  y_cumsum <- e.divisive(cumsum_RPE[,c(1,3)],min.size = 2)$estimates
+  fatigue_ecp_CusumRPE <- y_cumsum[2:length(y_cumsum)-1]
+  changepoints_cusum_subj_ecp[[i]] <- cumsum_RPE[fatigue_ecp_CusumRPE, 1]
+  
   cat('###',paste0("P", i), "{-}",'\n')
-  df_transformed <- melt(get(paste0("subject",i,"_medianf")),
-                       id.vars = "time.from.start",
-                       measure.vars=c("scaled.stride.len",
-                                      "scaled.stride.height",
-                                      "stride.duration"
-                                      )
-                         ) # ggplot data needs to be tall
-    correct_subject_rows <- which(df_RPE_transformed[,2]==paste0("Subject.",i,".RPE"))
-    dataholder <- df_RPE_transformed[correct_subject_rows,]
-    
-    cumsum_RPE[,1] <- dataholder[,1]
-    cumsum_RPE[,2] <- paste0(dataholder[,2],".CUSUM")
-    cumsum_RPE[,3] <- cumsum(dataholder[,3]-13)
-    df_transformed <- rbind(df_transformed,df_RPE_transformed[correct_subject_rows,],
-                            cumsum_RPE)
-    
-    # Calculation of when a subjects fatigue is >= 13
-    fatigue_from_RPE_threshold <- which(RPE[,i+1]>=RatingThresh) %>% 
-                                  min() # returns window number
-    changepoints_subj_thr[[i]] <- fatigue_from_RPE_threshold * 600 # from 10-minute interval number to seconds
-    df_RPE<-data.frame(d1=RPE[1],t1=RPE[i+1]) # to make dataframe of subjective ratings for ggplot
-
-      y = e.divisive(df_RPE,min.size = 2)$estimates
-      fatigue_from_ecp_changepoint = y[2:(length(y)-1)] # removing the first and last points as trivials changepoints
-      changepoints_subj_ecp[[i]] <- fatigue_from_ecp_changepoint*600 # converting from 10 minute windows to seconds
       
-      # Repeating the above analysis for the CUSUMs of the RPE
-      y_cumsum <- e.divisive(cumsum_RPE[,c(1,3)],min.size = 2)$estimates
-      fatigue_ecp_CusumRPE <- y_cumsum[2:length(y_cumsum)-1]
-      changepoints_cusum_subj_ecp[[i]] <- fatigue_ecp_CusumRPE*600
-      
-      assign(paste0("g",i),
+  assign(paste0("g",i),
         ggplot(data = df_transformed,
                aes(x=time.from.start, y=value, colour = variable)) + 
           geom_line(size=1) +
@@ -958,12 +1092,13 @@ for (i in 1:15) {
   
   }
 
-# Did not save it since the results are redone in the next section section
-# The purpose of this section is to generate the plots
+save(changepoints_subj_ecp, changepoints_subj_thr, changepoints_cusum_subj_ecp,
+     file = "./Data/RGenerated/ChangepointsRPE.RData")
+
 ```
 
 
-## Plots with CUSUM of the MF Data and their Changepoints{.tabset .tabset-fade}
+## Plots with the CUSUM of the Median Filtered Data and the ECP-CUSUM Changepoints {.tabset .tabset-fade}
 In this section, we perform the following tasks:  
 
 (A) EDA, where we overlay the subjective ratings with the **CUSUM changepoints**;
@@ -989,39 +1124,31 @@ changepoints_cusum_subj_ecp <- list()
 for (i in 1:15) {
   cumsum_RPE <- data.frame(matrix(ncol=3, nrow=19)) # need to initialize every time
   colnames(cumsum_RPE) <- c("time.from.start","variable","value")
-  cat('###',paste0("P", i), "{-}",'\n')
-  df_transformed <- melt(get(paste0("subject",i,"_cusum")),
-                       id.vars = "time.from.start",
-                       measure.vars=c("scaled.stride.len",
-                                      "scaled.stride.height",
-                                      "stride.duration"
-                                      )
-                         ) # ggplot data needs to be tall
-    correct_subject_rows <- which(df_RPE_transformed[,2]==paste0("Subject.",i,".RPE"))
-    dataholder <- df_RPE_transformed[correct_subject_rows,]
-    
-    cumsum_RPE[,1] <- dataholder[,1]
-    cumsum_RPE[,2] <- paste0(dataholder[,2],".CUSUM")
-    cumsum_RPE[,3] <- cumsum(dataholder[,3]-13)
-    df_transformed <- rbind(df_transformed,df_RPE_transformed[correct_subject_rows,],
-                            cumsum_RPE)
-    
-    # Calculation of when a subjects fatigue is >= 13
-    fatigue_from_RPE_threshold <- which(RPE[,i+1]>=RatingThresh) %>% 
-                                  min() # returns window number
-    changepoints_subj_thr[[i]] <- fatigue_from_RPE_threshold * 600 # from 10-minute interval number to seconds
-    df_RPE<-data.frame(d1=RPE[1],t1=RPE[i+1]) # to make dataframe of subjective ratings for ggplot
-
-      y = e.divisive(df_RPE,min.size = 2)$estimates
-      fatigue_from_ecp_changepoint = y[2:(length(y)-1)] # removing the first and last points as trivials changepoints
-      changepoints_subj_ecp[[i]] <- fatigue_from_ecp_changepoint*600 # converting from 10 minute windows to seconds
-      
-      # Repeating the above analysis for the CUSUMs of the RPE
-      y_cumsum <- e.divisive(cumsum_RPE[,c(1,3)],min.size = 2)$estimates
-      fatigue_ecp_CusumRPE <- y_cumsum[2:length(y_cumsum)-1]
-      changepoints_cusum_subj_ecp[[i]] <- fatigue_ecp_CusumRPE*600
-      
-      assign(paste0("g",i),
+  correct_subject_rows <- which(df_RPE_transformed[,2]==paste0("Subject.",i,".RPE"))
+  dataholder <- df_RPE_transformed[correct_subject_rows,]
+  # Computing the CUSUMs of the RPEs
+  cumsum_RPE[,1] <- dataholder[,1]
+  cumsum_RPE[,2] <- paste0(dataholder[,2],".CUSUM")
+  cumsum_RPE[,3] <- cumsum(dataholder[,3]-13)
+  
+  # -------- Calculation of Fatigue based on RPE>= 13 -----------------
+  fatigue_from_RPE_threshold <- which(RPE[,i+1]>=RatingThresh) %>% 
+                              min() # returns window number
+  changepoints_subj_thr[[i]] <- RPE[fatigue_from_RPE_threshold,1]
+  df_RPE<-data.frame(d1=RPE[1],t1=RPE[i+1]) # to make dataframe of subjective ratings for ggplot
+  
+  #------- Estimation of Fatigue Changepoints based on ECP of the RPE Data --
+  y <- e.divisive(df_RPE,min.size = 2)$estimates
+  fatigue_from_ecp_changepoint = y[2:(length(y)-1)] # removing the first and last points as trivials changepoints
+  changepoints_subj_ecp[[i]] <- df_RPE[fatigue_from_ecp_changepoint,1]
+  
+  # ------ Repeating the above analysis for the CUSUMs of the RPE --------
+  y_cumsum <- e.divisive(cumsum_RPE[,c(1,3)],min.size = 2)$estimates
+  fatigue_ecp_CusumRPE <- y_cumsum[2:length(y_cumsum)-1]
+  changepoints_cusum_subj_ecp[[i]] <- cumsum_RPE[fatigue_ecp_CusumRPE, 1]
+   
+  cat('###',paste0("P", i), "{-}",'\n')   
+  assign(paste0("g",i),
         ggplot(data = df_transformed,
                aes(x=time.from.start, y=value, colour = variable)) + 
           geom_line(size=2) +
@@ -1066,7 +1193,7 @@ for (i in 1:15) {
              length(changepoints_cusum_subj_ecp[[i]]),
              ". These changepoints are located at: ",
              paste(changepoints_cusum_subj_ecp[[i]], collapse = ", "),
-             '. </b> </font> The results from the analysis above can be found at: <a href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/ChangepointsRPE.RData">ChangepointsRPE.RData</a>. </p> </source>')
+             '. </b> </font> Note that the results from the analysis above can be found at: <a href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/ChangepointsRPE.RData">ChangepointsRPE.RData</a>. This is the same link as that provided in the previous section since the RPEresults are identical. The change here was overlaying the RPE results with the CUSUM of the median filtered data and their corresponding changepoints from the ECP package (instead of directly with the median filtered data and their changepoints [also from the ECP package]). </p> </source>')
       )
   
   cat('\n \n')
