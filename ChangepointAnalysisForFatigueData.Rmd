@@ -1021,6 +1021,8 @@ for (i in 1:15) {
   cumsum_RPE[,1] <- dataholder[,1]
   cumsum_RPE[,2] <- paste0(dataholder[,2],".CUSUM")
   cumsum_RPE[,3] <- cumsum(dataholder[,3]-13)
+  df_transformed <- rbind(df_transformed,df_RPE_transformed[correct_subject_rows,],
+                            cumsum_RPE)
   
   # -------- Calculation of Fatigue based on RPE>= 13 -----------------
   fatigue_from_RPE_threshold <- which(RPE[,i+1]>=RatingThresh) %>% 
@@ -1039,6 +1041,15 @@ for (i in 1:15) {
   changepoints_cusum_subj_ecp[[i]] <- cumsum_RPE[fatigue_ecp_CusumRPE, 1]
   
   cat('###',paste0("P", i), "{-}",'\n')
+  df_transformed <- melt(get(paste0("subject",i,"_medianf")),
+                       id.vars = "time.from.start",
+                       measure.vars=c("scaled.stride.len",
+                                      "scaled.stride.height",
+                                      "stride.duration"
+                                      )
+                         )
+  df_transformed <- rbind(df_transformed,df_RPE_transformed[correct_subject_rows,],
+                            cumsum_RPE)
       
   assign(paste0("g",i),
         ggplot(data = df_transformed,
@@ -1131,6 +1142,7 @@ for (i in 1:15) {
   cumsum_RPE[,2] <- paste0(dataholder[,2],".CUSUM")
   cumsum_RPE[,3] <- cumsum(dataholder[,3]-13)
   
+  
   # -------- Calculation of Fatigue based on RPE>= 13 -----------------
   fatigue_from_RPE_threshold <- which(RPE[,i+1]>=RatingThresh) %>% 
                               min() # returns window number
@@ -1147,11 +1159,21 @@ for (i in 1:15) {
   fatigue_ecp_CusumRPE <- y_cumsum[2:length(y_cumsum)-1]
   changepoints_cusum_subj_ecp[[i]] <- cumsum_RPE[fatigue_ecp_CusumRPE, 1]
    
-  cat('###',paste0("P", i), "{-}",'\n')   
+  cat('###',paste0("P", i), "{-}",'\n')
+  df_transformed <- melt(get(paste0("subject",i,"_cusum")),
+                       id.vars = "time.from.start",
+                       measure.vars=c("scaled.stride.len",
+                                      "scaled.stride.height",
+                                      "stride.duration"
+                                      )
+                         )
+  df_transformed <- rbind(df_transformed,df_RPE_transformed[correct_subject_rows,],
+                            cumsum_RPE)
+  
   assign(paste0("g",i),
         ggplot(data = df_transformed,
                aes(x=time.from.start, y=value, colour = variable)) + 
-          geom_line(size=2) +
+          geom_line(size=1) +
           theme_bw() +
           scale_colour_manual(values = c("red", "green", "blue","black","grey40")) +
           facet_wrap(~variable,nrow=5, scales = "free_y") +
