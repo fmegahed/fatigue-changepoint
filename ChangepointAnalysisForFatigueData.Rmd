@@ -320,7 +320,7 @@ for (i in 1:15) {
 # Filtering Approaches and Data Preprocessing Approaches
 An alternative approach to detecting and then removing outliers is to use smoothing techniques to "correct" the data. Based on the results shown in the previous sections, the fundamental hypotheses behind this approach are: 
   
-  (A) The sensors' data seem to be non-stationary, autocorrelated and somewhat complex (from a statistical perspective). More importantly, there are spikes in the data that cannot be explained by the kinematic model. These spikes produce values that are unrealistic (e.g., a scaled stride length > 1 is not possible since that means that the stride of the person is larger than their height). While this insight is useful, there is no hard limit that we can enforce since the literature reports mean values across the population instead of attempting to provide a physical threshold on what is possible.  
+  (A) The sensors' data seem to be non-stationary, autocorrelated and somewhat complex (from a statistical perspective). More importantly, there are spikes in the data that cannot be explained by the kinematic model. These spikes produce values that are unrealistic (e.g., a scaled stride length > 2 is not possible since that means that the stride of the person is two times larger than their height). While this insight is useful, there is no hard limit that we can enforce since the literature reports mean values across the population instead of attempting to provide a physical threshold on what is possible.  
   
   (B) The outliers tended to appear in pairs of two; indicating a possible issue in the segmentation of the data. Note that we label this data as outliers since it is not sustained (i.e., it is unlikely to say that a person is fatigued for only two stride).  
   
@@ -526,7 +526,7 @@ changepoints_subj_ecp <- list()
 changepoints_cusum_subj_ecp <- list()
 
 for (i in 1:15) {
-  cumsum_RPE <- data.frame(matrix(ncol=3, nrow=19)) # need to initialize every time
+  cumsum_RPE <- data.frame(matrix(ncol=3, nrow=18)) # need to initialize every time
   colnames(cumsum_RPE) <- c("time.from.start","variable","value")
   correct_subject_rows <- which(df_RPE_transformed[,2]==paste0("Subject.",i,".RPE"))
   dataholder <- df_RPE_transformed[correct_subject_rows,]
@@ -606,16 +606,20 @@ for (i in 1:15) {
     print(get(paste0("h",i)))
   
     cat('\n \n')
+    
+    # First, the <b> black  lines are used to denote the changepoints based on the non-parameteric, univariate, ECP approach based on the e.divisive(min.size=2) on the First Principal Component of the Kinematic Features. </b> Second
   
-    cat(paste0('<source> <p> In the above figure, the colored vertical lines correspond to the following.  First, the <b> black  lines are used to denote the changepoints based on the non-parameteric, univariate, ECP approach based on the e.divisive(min.size=2) on the First Principal Component of the Kinematic Features. </b> Second, the <font color= #63B8FF> <b>steelblue line  correspond to the time from start in seconds, when the subject has a RPE that equals or exceeds 13. </b> </font> Note that we only indicate the first occurence when the RPE>=13 on the graphs. Third, the <b> <font color=#CCCCCC> gray lines  denote the univariate, nonparametric changepoints obtained from applying the e.divisive() on the RPE values from the subject. </font> </b>',
-'. Fourth, the <b> <font color=#FFA500> orange lines  are used to denote the univariate, nonparametric changepoints obtained from applying the e.divisive() on the CUSUM of the RPE values. </font> </b> \n \n'))
+    cat(paste0('<source> <p> In the above figure, the colored vertical lines correspond to the following.  First, the <font color= #63B8FF> <b>steelblue line  correspond to the time from start in seconds, when the subject has a RPE that equals or exceeds 13. </b> </font> Note that we only indicate the first occurence when the RPE>=13 on the graphs. Second, the <b> <font color=#CCCCCC> gray lines  denote the univariate, nonparametric changepoints obtained from applying the e.divisive() on the RPE values from the subject. </font> </b>',
+'. Third, the <b> <font color=#FFA500> orange lines  are used to denote the univariate, nonparametric changepoints obtained from applying the e.divisive() on the CUSUM of the RPE values. </font> </b> \n \n'))
   
-    cat(paste0('<source> <p> Based on the <b>ecp package, the number of changepoints for the First PC of the median filtered data for participant ', i,
-             ' is equal to: ',
+# <source> <p> Based on the <b>ecp package, the number of changepoints for the First PC of the median filtered data for participant ', i,
+ #            ' is equal to: ',
              # length(changepoints_pca_ecp[[i]]),
              # '. These changepoints are located at: ',
              # paste(changepoints_pca_ecp[[i]], collapse = ", "),
-             '.  <font color= #63B8FF> The threshold based changepoint in the subjective RPE is located at: ',
+#             '.  <font color= #63B8FF>    
+    
+    cat(paste0('<source> <p>  <font color= #63B8FF> <b> The threshold based changepoint in the subjective RPE is located at: ',
              paste(changepoints_subj_thr[[i]]),
              '. </font> </b> In addition, <b> <font color=#CCCCCC> the number of changepoints based on the RPE values for this subject is equal to: ',
              length(changepoints_subj_ecp[[i]]),
@@ -711,7 +715,7 @@ save(changepoints_medianf,
 
 
 ### Using the Median Filtered Differenced Data {.tabset .tabset-fade}
-Here, we apply the ecp approach of [Matteson and James (2014)](https://amstat.tandfonline.com/doi/abs/10.1080/01621459.2013.849605) on the **median filtered differenced data** (as opposed to the median filtered timeseries). For demonstration purpose, we use $\small m_{ecp} = 120$ below. ** Note that, here, we set the value of $\small \alpha=2$ as opposed to 1 (elsewhere) since we are look for changes in the variation instead of the mean See their paper for more details.   
+Here, we apply the ecp approach of [Matteson and James (2014)](https://amstat.tandfonline.com/doi/abs/10.1080/01621459.2013.849605) on the **median filtered differenced data** (as opposed to the median filtered timeseries). For demonstration purpose, we use $\small m_{ecp} = 120$ below. ** Note that, here, we set the value of $\small \alpha=2$ as opposed to 1 (elsewhere) since we are looking for changes in the variation instead of the mean. See their paper for more details.   
 ```{r MCP_MedianFilteredDiffData, cache=TRUE, fig.align='center', results='asis', out.width='65%', message=FALSE}
   load(file = "./Data/RGenerated/MedianFilteredData.RData")
   pen <- function(x) -length(x) #Equally penalizes every additional changepoint
@@ -841,10 +845,10 @@ save(changepoints_cusum,
        file = "./Data/RGenerated/ECPChangePointsCUSUM.RData")
 ```
 
-## The Approach of Capizzi and Masarotto (dbphase1)
+## The Approach of Capizzi and Masarotto (dfphase1)
 To compare the performance of the ECP approach, we also investigated using the approach of [Cappizi and Masarotto (2016)](https://amstat.tandfonline.com/doi/abs/10.1080/00401706.2016.1272494) for another nonparameteric multivariate changepoint analysis method. Similar to the *ecp approach*, we applied their methodology on the: (a) median filtered data; and (b) cusums of the median filtered data. The results are shown in the following subsections. **Note that we did not perform the analysis on the differences since we concluded that it was less informative than (a) and (b) based on our conclusions from Section 4.1.** 
 
-For the parameterization of the [Cappizi and Masarotto (2016)](https://amstat.tandfonline.com/doi/abs/10.1080/00401706.2016.1272494) approach, we used the default parameters of the [mphase1() function from the dphase1 package](https://cran.r-project.org/web/packages/dfphase1/dfphase1.pdf) with the exception of:  
+For the parameterization of the [Cappizi and Masarotto (2016)](https://amstat.tandfonline.com/doi/abs/10.1080/00401706.2016.1272494) approach, we used the default parameters of the [mphase1() function from the dfphase1 package](https://cran.r-project.org/web/packages/dfphase1/dfphase1.pdf) with the exception of:  
   -- *isolated = FALSE* since we do not expect shifts to last only 120 strides.  
   -- *plot = FALSE* since we would like to use *ggplot package* instead of the default plot function.
 
@@ -989,7 +993,7 @@ In addition, from the analysis, the changepoints based on the CUSUM of the media
 Throughout the experiments, participants provided their subjective ratings every 10 minutes. The ratings were based on the [Borg 6-20 RPE scale](https://www.tandfonline.com/doi/abs/10.1080/00140139.2018.1442936). Recent literature on fatigue detection suggests that a rating of 13 can be used to estimate the onset of fatigue (see [Maman et al. (2017)](https://www.sciencedirect.com/science/article/pii/S0003687017300261) for a detailed analysis). The subjective ratings for each participant can be accessed at: [subjective-ratings-raw](https://github.com/fmegahed/fatigue-changepoint/tree/master/Data/Raw).
 
 
-## Plots with the Median Filtered Data and their Changepoints {.tabset .tabset-fade}
+## Plots with the Median Filtered Data and their ECP Changepoints {.tabset .tabset-fade}
 In this section, we perform the following tasks:  
 
 (A) EDA, where we overlay the subjective ratings with the **Median Filtered changepoints**;
@@ -1014,7 +1018,7 @@ changepoints_subj_thr <- list()
 changepoints_cusum_subj_ecp <- list()
 
 for (i in 1:15) {
-  cumsum_RPE <- data.frame(matrix(ncol=3, nrow=19)) # need to initialize every time
+  cumsum_RPE <- data.frame(matrix(ncol=3, nrow=18)) # need to initialize every time
   colnames(cumsum_RPE) <- c("time.from.start","variable","value")
   correct_subject_rows <- which(df_RPE_transformed[,2]==paste0("Subject.",i,".RPE"))
   dataholder <- df_RPE_transformed[correct_subject_rows,]
@@ -1136,7 +1140,7 @@ changepoints_subj_thr <- list()
 changepoints_cusum_subj_ecp <- list()
 
 for (i in 1:15) {
-  cumsum_RPE <- data.frame(matrix(ncol=3, nrow=19)) # need to initialize every time
+  cumsum_RPE <- data.frame(matrix(ncol=3, nrow=18)) # need to initialize every time
   colnames(cumsum_RPE) <- c("time.from.start","variable","value")
   correct_subject_rows <- which(df_RPE_transformed[,2]==paste0("Subject.",i,".RPE"))
   dataholder <- df_RPE_transformed[correct_subject_rows,]
@@ -1228,6 +1232,73 @@ for (i in 1:15) {
 save(changepoints_subj_thr,changepoints_subj_ecp, changepoints_cusum_subj_ecp,
        file = "./Data/RGenerated/ChangepointsRPE.RData")
 ```
+
+# Data Normalization
+
+In this section, we normalize the timescale a 0-100% scale for all participants to prepare for a timeseries clustering type analysis. 
+
+```{r Data_normalization, cache=TRUE, fig.align='center', results='asis', out.width='100%', message=FALSE, warning=FALSE}
+# to load previously generated data and changepoints 
+load(file = "./Data/RGenerated/MedianFilteredData.RData")
+load(file = "./Data/RGenerated/CusumData.RData")
+medianfilt_norm <- list()
+cusum_norm <- list()
+
+for (i in 1:15) {
+  
+  df <- get(paste0("subject",i,"_medianf")) # Getting Data from Sec.
+  # Normalizing each of the three variables
+  time.from.start <- df[,1]
+  norm.stride.len <- 100*(df[,2]-min(df[,2]))/(max(df[,2])-min(df[,2])) # scale of 0-100
+  norm.stride.height <- 100*(df[,3]-min(df[,3]))/(max(df[,3])-min(df[,3])) # scale of 0-100
+  norm.stride.duration <- 100*(df[,4]-min(df[,4]))/(max(df[,4])-min(df[,4])) # scale of 0-100
+  
+  df_norm <- data.frame(cbind(time.from.start, norm.stride.len, 
+                          norm.stride.height, norm.stride.duration))
+  
+  colnames(df_norm) <- c("time.from.start", "norm.stride.len",
+                          "norm.stride.height", "norm.stride.duration")
+  
+  assign(paste0("subject",i,"_median_norm"), df_norm)
+  
+  medianfilt_norm[[i]] <- get(paste0("subject",i,"_median_norm"))
+  
+  
+  
+  df <- get(paste0("subject",i,"_cusum")) # Getting Data from Sec.
+  # Normalizing each of the three variables
+  time.from.start <- df[,1]
+  norm.stride.len <- 100*(df[,2]-min(df[,2]))/(max(df[,2])-min(df[,2])) # scale of 0-100
+  norm.stride.height <- 100*(df[,3]-min(df[,3]))/(max(df[,3])-min(df[,3])) # scale of 0-100
+  norm.stride.duration <- 100*(df[,4]-min(df[,4]))/(max(df[,4])-min(df[,4])) # scale of 0-100
+  
+  df_norm <- data.frame(cbind(time.from.start, norm.stride.len, 
+                          norm.stride.height, norm.stride.duration))
+  
+  colnames(df_norm) <- c("time.from.start", "norm.stride.len",
+                          "norm.stride.height", "norm.stride.duration")
+  
+  assign(paste0("subject",i,"_cusum_norm"), df_norm)
+  
+  cusum_norm[[i]] <- get(paste0("subject",i,"_cusum_norm"))
+  
+
+  
+}
+
+  cat(paste0('</b> </font> The normalized data can be found at: <a href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/NormMedianFilteredData.RData">NormMedianFilteredData.RData</a> and <a 
+href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/NormCusumData.RData">NormCusumData.RData</a> </p> </source>')
+  )
+
+save(medianfilt_norm,
+     file = "./Data/RGenerated/NormMedianFilteredData.RData")
+
+save(cusum_norm,
+     file = "./Data/RGenerated/NormCusumData.RData")
+
+
+```
+
 
 # Comments
 From B and C, we are hoping to develop a general diagnosis/understanding of how fatigue develops (e.g., we start with a ramp up phase, then steady state, then fatigue starting, and then person is totally fatigued).
