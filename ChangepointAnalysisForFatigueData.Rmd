@@ -4,6 +4,7 @@ author:
   - Amir Baghdadi^[Department of Mechanical and Aerospace Engineering, University at Buffalo. ]
   - Lora A. Cavuoto^[Department of Industrial and Systems Engineering, University at Buffalo. ]
   - Allison Jones-Farmer^[Farmer School of Business, Miami University. ]
+  - Steve Rigdon^[College for Public Health and Social Justice, Saint Louis University]
   - Fadel M. Megahed^[Farmer School of Business, Miami University. Corresponding author.    [fmegahed@miamioh.edu](mailto:fmegahed@miamioh.edu).]
 
 date: "`r format(Sys.time(), '%B %d, %Y')`"
@@ -672,7 +673,8 @@ To apply the *ecp approach of [Matteson and James (2014)](https://amstat.tandfon
                   member= mem,
                   alpha = 1,
                   penalty = pen)
-      changepoints_medianf[[i]] <- y$estimates
+      fatigue_from_ECP <- y$estimates # Returns observation number
+      changepoints_medianf[[i]] <- df[fatigue_from_ECP,1]
       
       cat('####',paste0("P", i), "{-}",'\n')
       df_transformed <- melt(get(paste0("subject",i,"_medianf")),
@@ -693,7 +695,7 @@ To apply the *ecp approach of [Matteson and James (2014)](https://amstat.tandfon
                  #axis.text.x=element_text(angle=90,hjust=1),
                  plot.title = element_text(hjust = 0.5)) +
            facet_wrap(~variable,nrow=3, scales = "free_y") +
-           geom_vline(xintercept= y$estimates)
+           geom_vline(xintercept= changepoints_medianf[[i]])
          )
       
       print(get(paste0("g",i)))
@@ -704,7 +706,7 @@ To apply the *ecp approach of [Matteson and James (2014)](https://amstat.tandfon
              ' is equal to: ',
              length(changepoints_medianf[[i]]),
              '. These changepoints are located at: ',
-             paste(changepoints_medianf[[i]], collapse = ", "),
+             paste(round(changepoints_medianf[[i]]), collapse = ", "),
              '. The results from the analysis above can be found at: <a href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/ECPChangePointsMFData.RData">ECPChangePointsMFData.RData</a>. </p> </source>')
       )
   cat('\n \n')
@@ -737,7 +739,8 @@ Here, we apply the ecp approach of [Matteson and James (2014)](https://amstat.ta
                   member= mem,
                   alpha = 2,
                   penalty = pen)
-      changepoints_medianf_diff[[i]] <- y$estimates
+      fatigue_from_ECP <- y$estimates
+      changepoints_medianf_diff[[i]] <- df[fatigue_from_ECP,1]
       
       cat('####',paste0("P", i), "{-}",'\n')
       df_transformed <- melt(get(paste0("subject",i,"_median_diff_f")),
@@ -758,7 +761,7 @@ Here, we apply the ecp approach of [Matteson and James (2014)](https://amstat.ta
                  #axis.text.x=element_text(angle=90,hjust=1),
                  plot.title = element_text(hjust = 0.5)) +
            facet_wrap(~variable,nrow=3, scales = "free_y") +
-           geom_vline(xintercept= y$estimates)
+           geom_vline(xintercept= changepoints_medianf_diff[[i]])
          )
       
       print(get(paste0("g",i)))
@@ -769,7 +772,7 @@ Here, we apply the ecp approach of [Matteson and James (2014)](https://amstat.ta
              ' is equal to: ',
              length(changepoints_medianf_diff[[i]]),
              '. These changepoints are located at: ',
-             paste(changepoints_medianf_diff[[i]], collapse = ", "),
+             paste(round(changepoints_medianf_diff[[i]]), collapse = ", "),
              '. The results from the analysis above can be found at: <a href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/ECPChangePointsDiffMFData.RData">ECPChangePointsDiffMFData.RData</a>. </p> </source>')
       )
   
@@ -804,7 +807,8 @@ load(file = "./Data/RGenerated/CusumData.RData")
                   member= mem,
                   alpha = 1,
                   penalty = pen)
-      changepoints_cusum[[i]] <- y$estimates
+      fatigue_from_CUSUM_ECP <- y$estimates
+      changepoints_cusum[[i]] <- df[fatigue_from_CUSUM_ECP,1]
       
       cat('####',paste0("P", i), "{-}",'\n')
       df_transformed <- melt(get(paste0("subject",i,"_cusum")),
@@ -825,7 +829,7 @@ load(file = "./Data/RGenerated/CusumData.RData")
                  #axis.text.x=element_text(angle=90,hjust=1),
                  plot.title = element_text(hjust = 0.5)) +
            facet_wrap(~variable,nrow=3, scales = "free_y") +
-           geom_vline(xintercept= y$estimates)
+           geom_vline(xintercept= changepoints_cusum[[i]])
          )
       
       print(get(paste0("g",i)))
@@ -836,7 +840,7 @@ load(file = "./Data/RGenerated/CusumData.RData")
              ' is equal to: ',
              length(changepoints_cusum[[i]]),
              '. These changepoints are located at: ',
-             paste(changepoints_cusum[[i]], collapse = ", "),
+             paste(round(changepoints_cusum[[i]]), collapse = ", "),
              '. The results from the analysis above can be found at: <a href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/ECPChangePointsCUSUM.RData">ECPChangePointsCUSUM.RData</a>. </p> </source>')
       )
   cat('\n \n')
@@ -873,7 +877,7 @@ Notes:
     dataholder.array <- t(df.MultivariateChangepoint) %>% 
                           array(c(3, window.size, rows.to.keep))
     y <- mphase1(dataholder.array,
-                 isolated=FALSE, plot = FALSE)
+                 isolated=FALSE, plot = FALSE, alpha=0.001)
     mcp <- (df[unlist(y$alasso[2]),1]*window.size) %>% round(digits = 0)
     mcp <- mcp[order(mcp)]
     mcp <- (mcp - window.size) + 1 # to make the change point at the begining of the period and not end (to be similar to the ecp method)
@@ -934,7 +938,7 @@ Notes:
     dataholder.array <- t(df.MultivariateChangepoint) %>% 
                           array(c(3, window.size, rows.to.keep))
     y <- mphase1(dataholder.array,
-                 isolated=FALSE, plot = FALSE)
+                 isolated=FALSE, plot = FALSE, alpha=0.001)
     mcp <- (df[unlist(y$alasso[2]),1]*window.size) %>% round(digits = 0)
     mcp <- mcp[order(mcp)]
     mcp <- (mcp - window.size) + 1 # to make the change point at the begining of the period and not end (to be similar to the ecp method)
@@ -983,7 +987,7 @@ Notes:
 ## Comments on the ECP and dfphase1 Methods
 Based on the results in Sections 4.1 and 4.2, the approach of [Matterson and James (2016)](https://amstat.tandfonline.com/doi/abs/10.1080/01621459.2013.849605) is preferred since it:
 
-  (A) Results in a more limited number of changepoints, highlighting more (practically) significant changes in the gait parameters. This result was somewhat surprising since we used the default settings for the approach of [Capizzi and Masarotto (2016)](https://amstat.tandfonline.com/doi/abs/10.1080/00401706.2016.1272494) throught the default [mphase1()](https://cran.r-project.org/web/packages/dfphase1/dfphase1.pdf), which prevents having changepoints within 5 windows; and  
+  (A) Results in a more limited number of changepoints, highlighting more (practically) significant changes in the gait parameters. This result was somewhat surprising since we used the default settings for the approach of [Capizzi and Masarotto (2016)](https://amstat.tandfonline.com/doi/abs/10.1080/00401706.2016.1272494) throught the default [mphase1()](https://cran.r-project.org/web/packages/dfphase1/dfphase1.pdf), which prevents having changepoints within 5 windows. Note that this result holds true even when we adjusted the $\small \alpha =0.001$ instead of the default of $\small \alpha =0.05$:) for the mphase1() method (without adjusting the ecp() method since it does not allow for adjusting the false alarm rate); and  
   
   (B) Is more computationally efficient. It had a shorter run time than the other approach.
   
@@ -1003,7 +1007,7 @@ In this section, we perform the following tasks:
 (C) Utilize the [e.divisive() from the ecp package](https://cran.r-project.org/web/packages/ecp/vignettes/ecp.pdf) to obtain the changepoints for the Borg Ratings. Note that this function is the univariate approach for the multiple changepoint method examined in Section 4.1. 
 
 ```{r RPE_AnalysisMF, cache=TRUE, fig.align='center', results='asis', out.width='100%', message=FALSE, warning=FALSE}
-RatingThresh <- 13  # based on Maman et al. 2017
+RatingThresh <- 13  # based on Maman et al. 2017 
 RPE = read.csv("https://raw.githubusercontent.com/fmegahed/fatigue-changepoint/master/Data/Raw/RPE.csv") # to read subjective rating of RPE data from GitHub'
 colnames(RPE)[1] <- "time.from.start"
 df_RPE_transformed <- melt(RPE,
@@ -1092,7 +1096,7 @@ for (i in 1:15) {
              ' is equal to: ',
              length(changepoints_medianf[[i]]),
              '. These changepoints are located at: ',
-             paste(changepoints_medianf[[i]], collapse = ", "),
+             paste(round(changepoints_medianf[[i]]), collapse = ", "),
              '.  <font color= #63B8FF> The threshold based changepoint in the subjective RPE is located at: ',
              paste(changepoints_subj_thr[[i]]),
              '. </font> </b> In addition, <b> <font color=#CCCCCC> the number of changepoints based on the RPE values for this subject is equal to: ',
@@ -1125,7 +1129,7 @@ In this section, we perform the following tasks:
 
 (C) Utilize the [e.divisive() from the ecp package](https://cran.r-project.org/web/packages/ecp/vignettes/ecp.pdf) to obtain the changepoints for the Borg Ratings. Note that this function is the univariate approach for the multiple changepoint method examined in Section 4.1. 
 ```{r RPE_Analysis, cache=TRUE, fig.align='center', results='asis', out.width='100%', message=FALSE, warning=FALSE}
-RatingThresh <- 13  # based on Maman et al. 2017
+RatingThresh <- 13  # based on Maman et al. 2017 
 RPE = read.csv("https://raw.githubusercontent.com/fmegahed/fatigue-changepoint/master/Data/Raw/RPE.csv") # to read subjective rating of RPE data from GitHub'
 colnames(RPE)[1] <- "time.from.start"
 df_RPE_transformed <- melt(RPE,
@@ -1212,7 +1216,7 @@ for (i in 1:15) {
              ' is equal to: ',
              length(changepoints_cusum[[i]]),
              '. These changepoints are located at: ',
-             paste(changepoints_cusum[[i]], collapse = ", "),
+             paste(round(changepoints_cusum[[i]]), collapse = ", "),
              '.  <font color= #63B8FF> The threshold based changepoint in the subjective RPE is located at: ',
              paste(changepoints_subj_thr[[i]]),
              '. </font> </b> In addition, <b> <font color=#CCCCCC> the number of changepoints based on the RPE values for this subject is equal to: ',
@@ -1241,7 +1245,7 @@ In this section, we normalize the timescale a 0-100% scale for all participants 
 # to load previously generated data and changepoints 
 load(file = "./Data/RGenerated/MedianFilteredData.RData")
 load(file = "./Data/RGenerated/CusumData.RData")
-medianfilt_norm <- list()
+medianfilt_norm <- list() 
 cusum_norm <- list()
 
 for (i in 1:15) {
