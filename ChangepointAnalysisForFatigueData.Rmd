@@ -1255,12 +1255,15 @@ for (i in 1:15) {
   
   # resampling the data to 2000 samples
   nsamples = 2000
+  timePerc <- seq(0, 100, by=0.05)
   timeScale <- df[nrow(df),1]/nsamples
   df_norm = df[FALSE,]
   
   for (j in 1:nsamples) {
     df_matchIsx <- match.closest(timeScale*(j-0.5),df[,1]) # finding the closest point
-    df_norm <- rbind(df_norm, df[df_matchIsx,])
+    df_keep <- df[df_matchIsx,]
+    df_keep[,1] <- timePerc[j]
+    df_norm <- rbind(df_norm, df_keep)
   }
   assign(paste0("subject",i,"_features_norm"), df_norm)
   
