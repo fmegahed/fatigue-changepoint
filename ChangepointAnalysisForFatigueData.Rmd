@@ -1325,7 +1325,7 @@ for (i in 1:15) {
          )
   
    assign(paste0("h",i),
-         ggplot(data = df_transformed,
+         ggplot(data =  median_df_transformed,
                 aes(x=time.from.start, y=value, group=variable,
                     color=variable,shape=variable)) + 
            geom_line() + theme_bw() + 
