@@ -46,7 +46,9 @@ library(pacman) # needs to be installed first
 p_load(R.matlab, plotly, extrafont, grDevices, gridExtra,
        dplyr, stringr, tidyverse, utils, reshape2,
        anomalize, forecast, MVN, fractal,
-       ecp, dfphase1, MALDIquant)
+       ecp, dfphase1, 
+       MALDIquant, TSclust,
+       knitr, kableExtra) 
 ```
 
 In the snippet below, we extract the 15 ".mat" files in the [GitHub repository](https://github.com/fmegahed/fatigue-changepoint/tree/master/Data/Raw) (where we loaded the data to allow for the reproduction of our work). Note that these files were originally produced in [Baghdadi et al., 2018](https://www.tandfonline.com/doi/abs/10.1080/00140139.2018.1442936?). Then, we perform several transformation steps: (a) extracting the data for the first three columns in the matlab arrays; and (b) computing three kinematic features from the data corresponding to these columns. Due to the differences between Matlab and R, this requires two nested *for* loops. The outer loop increments over the number of subjects, while the inner loop increments based on the different number of rows of data for each subject. Please see the comments within the code chunk for more details. 
@@ -1237,14 +1239,15 @@ save(changepoints_subj_thr,changepoints_subj_ecp, changepoints_cusum_subj_ecp,
        file = "./Data/RGenerated/ChangepointsRPE.RData")
 ```
 
-# Data Normalization {.tabset .tabset-fade}
 
-In this section, we normalize the timescale a 0-100% scale for all participants to prepare for a timeseries clustering type analysis. 
+# Time-Series Clustering
+
+## Using %Time-from-Start to Standardize the Length of Each Participant's Time-series {.tabset .tabset-fade}
+In this section, we rescale/normalize the timescale a 0-100% scale for all participants to prepare for a timeseries clustering type analysis. Specifically, we sampled the three features from the data based on a 0.05% from start. This resulted in a standardization of the number of observations within each timeseries across our 15 paricipants. Based on our increment size, each timeseries is now comprised of 2000 observations, each at 0.05% time increment from its neighouring data points.
 
 ```{r Data_normalization, cache=TRUE, fig.align='center', results='asis', out.width='100%', message=FALSE, warning=FALSE}
 # to load previously generated data 
 load(file = "./Data/RGenerated/FeatureGeneration.RData")
-library(MALDIquant) # need to be installed first
 
 medianfilt_norm <- list() 
 cusum_norm <- list()
@@ -1352,7 +1355,7 @@ for (i in 1:15) {
          )
   
   
-  cat('##',paste0("P", i), "{-}",'\n')
+  cat('###',paste0("P", i), "{-}",'\n')
   
   print(get(paste0("g",i)))
   cat('\n')
@@ -1378,6 +1381,84 @@ save(cusum_norm,
      file = "./Data/RGenerated/NormCusumData.RData")
 
 
+```
+
+
+## Time-Series Clustering
+To perform time-series clustering, we can do the following:  
+  
+  (a) univariate time-series clustering:  
+    - using the first PC of the scaled and then median filtered data; or  
+    - using the first PC of the scaled, median filtered and cusumed data;  
+  
+  (b) multivariate time-series clustering:  
+    - using the median filtered scaled data;  
+    - using the scaled, median filtered and then cusumed data.  
+    
+We show the results from each analysis in the following subsections.
+
+### Univariate TimeSeries Clustering based on the First PC of the Scaled Sensor Data
+```{r TS_Clust, cache=TRUE, fig.align='center', results= 'asis', out.width='65%', message=FALSE, warning=FALSE}
+load(file = "./Data/RGenerated/NormMedianFilteredData.RData")
+load(file = "./Data/RGenerated/NormMedianFilteredData.RData")
+# medianfilt_norm, cusum_norm
+
+pca_subjects_loadings_scaled <- list()
+pca_subjects_scaled <- data.frame(matrix(nrow=2000, ncol=15))
+pc_prop_var_explained_scaled <- vector()
+
+for (i in 1:length(medianfilt_norm)) {
+  df <- medianfilt_norm[[i]]
+  pca_dataholder <-  prcomp(df[,2:4], center=TRUE, scale. = T) # Scale <- Standardize Vars
+  pca_subjects_loadings_scaled[[i]] <- pca_dataholder$rotation[,1] # Weights for First PC
+  # Understanding the % Variation Explained by the First PC
+  pc_std <- pca_dataholder$sdev
+  pc_var <- pc_std^2
+  pc_prop_var_explained_scaled[i] <- round(pc_var[1]/sum(pc_var),3)
+  #  Storing the Data for First PC rotated values
+  pca_subjects_scaled[,i] <- pca_dataholder$x[,1] # First PC
+}
+
+distances <- diss(pca_subjects_scaled, "DTWARP")
+dimnames(distances) <- paste0("P",seq(1,15,1))
+
+cat(paste0('<source> <p> Based on the above analysis, the % variation explained by the first principal component of the scaled median filtered data for each participant is equal to: ', paste(round(pc_prop_var_explained_scaled, 2), collapse = ", "), '. To understand how the underlying multivariate time series methods are similar, we applied a heirarchical clustering algorithm based on the distances obtained using the <i> Dynamic Time Warping Method </i>. The resulting dendogram is shown in the figure below. </p> </source>'))
+
+cat("\n")
+
+# distances.matrix <- as.matrix(distances)
+# heatmap(distances.matrix)
+
+
+clusters <- hclust(distances)
+
+plot(clusters, hang=0.1, check = TRUE, 
+     axes = TRUE, ann = TRUE, ylab="Height",
+     main = "Cluster Dendogram based on the DTWARP distances")
+
+
+cat("\n")
+
+cat(paste0('Based on the above dendogram, one can see that the best choice for total number of clusters is equal to: 3 or 4. This number was then used to cut of the dendogram tree using the  cutree function in R. We show the resulting cluster membership in the table below.'))
+
+cat("\n")
+
+clusterCut3 <- cutree(clusters, 3)
+clusterCut4 <- cutree(clusters, 4)
+
+cat(paste0('The associated cluster assignments for both thresholds are as follows: \n', 'When using k=3, the assignments are as follows: \n'))
+
+
+kable(clusterCut3) %>% column_spec(1, bold = T, width = "5em") %>% kable_styling(bootstrap_options = "striped", full_width = F)
+
+cat(paste0(' \n', 'On the other hand, when k=4, the following assignments were made: \n'))
+
+kable(clusterCut4) %>% column_spec(1, bold = T, width = "5em") %>% kable_styling(bootstrap_options = "striped", full_width = F)
+
+cat("\n")
+
+save(clusterCut3, clusterCut4, pc_prop_var_explained_scaled,
+     file = "./Data/RGenerated/ScaledPcaClusters.RData")
 ```
 
 
