@@ -46,7 +46,7 @@ library(pacman) # needs to be installed first
 p_load(R.matlab, plotly, extrafont, grDevices, gridExtra,
        dplyr, stringr, tidyverse, utils, reshape2,
        anomalize, forecast, MVN, fractal,
-       ecp, dfphase1)
+       ecp, dfphase1, MALDIquant)
 ```
 
 In the snippet below, we extract the 15 ".mat" files in the [GitHub repository](https://github.com/fmegahed/fatigue-changepoint/tree/master/Data/Raw) (where we loaded the data to allow for the reproduction of our work). Note that these files were originally produced in [Baghdadi et al., 2018](https://www.tandfonline.com/doi/abs/10.1080/00140139.2018.1442936?). Then, we perform several transformation steps: (a) extracting the data for the first three columns in the matlab arrays; and (b) computing three kinematic features from the data corresponding to these columns. Due to the differences between Matlab and R, this requires two nested *for* loops. The outer loop increments over the number of subjects, while the inner loop increments based on the different number of rows of data for each subject. Please see the comments within the code chunk for more details. 
@@ -1237,57 +1237,131 @@ save(changepoints_subj_thr,changepoints_subj_ecp, changepoints_cusum_subj_ecp,
        file = "./Data/RGenerated/ChangepointsRPE.RData")
 ```
 
-# Data Normalization
+# Data Normalization {.tabset .tabset-fade}
 
 In this section, we normalize the timescale a 0-100% scale for all participants to prepare for a timeseries clustering type analysis. 
 
 ```{r Data_normalization, cache=TRUE, fig.align='center', results='asis', out.width='100%', message=FALSE, warning=FALSE}
-# to load previously generated data and changepoints 
-load(file = "./Data/RGenerated/MedianFilteredData.RData")
-load(file = "./Data/RGenerated/CusumData.RData")
+# to load previously generated data 
+load(file = "./Data/RGenerated/FeatureGeneration.RData")
+library(MALDIquant) # need to be installed first
+
 medianfilt_norm <- list() 
 cusum_norm <- list()
 
 for (i in 1:15) {
   
-  df <- get(paste0("subject",i,"_medianf")) # Getting Data from Sec.
-  # Normalizing each of the three variables
+  df <- get(paste0("subject",i,"_features")) # Getting Data from Sec.
+  
+  # resampling the data to 2000 samples
+  nsamples = 2000
+  timeScale <- df[nrow(df),1]/nsamples
+  df_norm = df[FALSE,]
+  
+  for (j in 1:nsamples) {
+    df_matchIsx <- match.closest(timeScale*(j-0.5),df[,1]) # finding the closest point
+    df_norm <- rbind(df_norm, df[df_matchIsx,])
+  }
+  assign(paste0("subject",i,"_features_norm"), df_norm)
+  
+  # median filter  
+  df <- get(paste0("subject",i,"_features_norm")) # Getting Data from Sec.
+  # Obtaining the Outliers for each of the three variables
   time.from.start <- df[,1]
-  norm.stride.len <- 100*(df[,2]-min(df[,2]))/(max(df[,2])-min(df[,2])) # scale of 0-100
-  norm.stride.height <- 100*(df[,3]-min(df[,3]))/(max(df[,3])-min(df[,3])) # scale of 0-100
-  norm.stride.duration <- 100*(df[,4]-min(df[,4]))/(max(df[,4])-min(df[,4])) # scale of 0-100
-  
-  df_norm <- data.frame(cbind(time.from.start, norm.stride.len, 
-                          norm.stride.height, norm.stride.duration))
-  
-  colnames(df_norm) <- c("time.from.start", "norm.stride.len",
-                          "norm.stride.height", "norm.stride.duration")
-  
-  assign(paste0("subject",i,"_median_norm"), df_norm)
-  
-  medianfilt_norm[[i]] <- get(paste0("subject",i,"_median_norm"))
-  
-  
-  
-  df <- get(paste0("subject",i,"_cusum")) # Getting Data from Sec.
-  # Normalizing each of the three variables
-  time.from.start <- df[,1]
-  norm.stride.len <- 100*(df[,2]-min(df[,2]))/(max(df[,2])-min(df[,2])) # scale of 0-100
-  norm.stride.height <- 100*(df[,3]-min(df[,3]))/(max(df[,3])-min(df[,3])) # scale of 0-100
-  norm.stride.duration <- 100*(df[,4]-min(df[,4]))/(max(df[,4])-min(df[,4])) # scale of 0-100
-  
-  df_norm <- data.frame(cbind(time.from.start, norm.stride.len, 
-                          norm.stride.height, norm.stride.duration))
-  
-  colnames(df_norm) <- c("time.from.start", "norm.stride.len",
-                          "norm.stride.height", "norm.stride.duration")
-  
-  assign(paste0("subject",i,"_cusum_norm"), df_norm)
-  
-  cusum_norm[[i]] <- get(paste0("subject",i,"_cusum_norm"))
-  
+  scaled.stride.len <- medianFilter(df[,2], order = 29) # moving window of size 29 obs
+  scaled.stride.height <- medianFilter(df[,3], order = 29) # moving window of size 29 obs
+  stride.duration <- medianFilter(df[,4], order = 29) # moving window of size 29 obs
+  assign(paste0("subject",i,"_medianf_norm"), 
+         data.frame(cbind(time.from.start, scaled.stride.len, 
+                          scaled.stride.height, stride.duration)))
+  medianfilt_norm[[i]] <- get(paste0("subject",i,"_medianf_norm"))
 
   
+  # cusum calculation
+  df <- get(paste0("subject",i,"_medianf_norm"))
+  means <- colMeans(df)
+  df[,2] <- cumsum(df[,2]-means[2])
+  df[,3] <- cumsum(df[,3]-means[3])
+  df[,4] <- cumsum(df[,4]-means[4])
+  assign(paste0("subject",i,"_cusum_norm"), df)  
+  cusum_norm[[i]] <- get(paste0("subject",i,"_cusum_norm"))
+  
+  
+   # Preparing the data for the Line Graph
+  df_transformed <- melt(get(paste0("subject",i,"_features_norm")),
+                         id.vars = "time.from.start",
+                         measure.vars=c("scaled.stride.len",
+                                        "scaled.stride.height",
+                                        "stride.duration"
+                                        )
+                         ) # ggplot data needs to be tall
+  
+  median_df_transformed <- melt(get(paste0("subject",i,"_medianf_norm")),
+                                 id.vars = "time.from.start",
+                                 measure.vars=c("scaled.stride.len",
+                                                "scaled.stride.height",
+                                                "stride.duration"
+                                                )
+                                 ) # ggplot data needs to be tall
+          
+  cusum_df_transformed  <- melt(get(paste0("subject",i,"_cusum_norm")),
+                                id.vars = "time.from.start",
+                                measure.vars=c("scaled.stride.len",
+                                               "scaled.stride.height",
+                                               "stride.duration"
+                                              )
+                               ) # ggplot data needs to be tall
+
+  assign(paste0("g",i),
+         ggplot(data = df_transformed,
+                aes(x=time.from.start, y=value, group=variable,
+                    color=variable,shape=variable)) + 
+           geom_line() + theme_bw() + 
+           ggtitle(paste0("Participant ",i,": Pre-filtered Resampled Data")) + 
+           theme(legend.position="none",
+                 #axis.text.x=element_text(angle=90,hjust=1),
+                 plot.title = element_text(hjust = 0.5)) +
+           facet_wrap(~variable,nrow=3, scales = "free_y")
+         )
+  
+   assign(paste0("h",i),
+         ggplot(data = df_transformed,
+                aes(x=time.from.start, y=value, group=variable,
+                    color=variable,shape=variable)) + 
+           geom_line() + theme_bw() + 
+           ggtitle("Resampled data post the application of the median filter") + 
+           theme(legend.position="none",
+                 #axis.text.x=element_text(angle=90,hjust=1),
+                 plot.title = element_text(hjust = 0.5)) +
+           facet_wrap(~variable,nrow=3, scales = "free_y")
+         )
+  
+  assign(paste0("I",i),
+         ggplot(data = cusum_df_transformed,
+                aes(x=time.from.start, y=value, group=variable,
+                    color=variable,shape=variable)) + 
+           geom_line() + theme_bw() + 
+           ggtitle("Resampled CUSUM of the data post the application of the median filter") + 
+           theme(legend.position="none",
+                 #axis.text.x=element_text(angle=90,hjust=1),
+                 plot.title = element_text(hjust = 0.5)) +
+           facet_wrap(~variable,nrow=3, scales = "free_y")
+         )
+  
+  
+  cat('##',paste0("P", i), "{-}",'\n')
+  
+  print(get(paste0("g",i)))
+  cat('\n')
+  
+  print(get(paste0("h",i)))
+  cat('\n')
+  
+  print(get(paste0("I",i)))
+  cat('\n')
+  
+  cat('\n \n')
+
 }
 
   cat(paste0('</b> </font> The normalized data can be found at: <a href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/NormMedianFilteredData.RData">NormMedianFilteredData.RData</a> and <a 
