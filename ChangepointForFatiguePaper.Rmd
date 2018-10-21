@@ -596,6 +596,150 @@ To perform time-series clustering, we can do the following:
     
 We show the results from each analysis in the following subsections.
 
+### Univariate TimeSeries Clustering based on the First PC of the Scaled Sensor Data
+```{r TS_Clust, cache=TRUE, fig.align='center', results= 'asis', out.width='65%', message=FALSE, warning=FALSE}
+load(file = "./Data/RGenerated/NormMedianFilteredData.RData")
+load(file = "./Data/RGenerated/NormCusumData.RData")
+# medianfilt_norm, cusum_norm
+
+pca_subjects_loadings_scaled <- list()
+pca_subjects_scaled <- data.frame(matrix(nrow=2000, ncol=15))
+pc_prop_var_explained_scaled <- vector()
+
+for (i in 1:15) {
+  df <- get(paste0("subject",i,"_medianf_norm"))
+  pca_dataholder <-  prcomp(df[,2:4], center=TRUE, scale. = T) # Scale <- Standardize Vars
+  pca_subjects_loadings_scaled[[i]] <- pca_dataholder$rotation[,1] # Weights for First PC
+  # Understanding the % Variation Explained by the First PC
+  pc_std <- pca_dataholder$sdev
+  pc_var <- pc_std^2
+  pc_prop_var_explained_scaled[i] <- round(pc_var[1]/sum(pc_var),3)
+  #  Storing the Data for First PC rotated values
+  pca_subjects_scaled[,i] <- pca_dataholder$x[,1] # First PC
+}
+
+distances <- diss(pca_subjects_scaled, "DTWARP")
+dimnames(distances) <- paste0("P",seq(1,15,1))
+
+cat(paste0('<source> <p> Based on the above analysis, the % variation explained by the first principal component of the scaled median filtered data for each participant is equal to: ', paste(round(pc_prop_var_explained_scaled, 2), collapse = ", "), '. To understand how the underlying multivariate time series methods are similar, we applied a heirarchical clustering algorithm based on the distances obtained using the <i> Dynamic Time Warping Method </i>. The resulting dendogram is shown in the figure below. </p> </source>'))
+
+cat("\n")
+
+# distances.matrix <- as.matrix(distances)
+# heatmap(distances.matrix)
+
+
+clusters <- hclust(distances)
+
+plot(clusters, hang=0.1, check = TRUE, 
+     axes = TRUE, ann = TRUE, ylab="Height",
+     main = "Cluster Dendogram based on the DTWARP distances")
+
+
+cat("\n")
+
+cat(paste0('Based on the above dendogram, one can see that the best choice for total number of clusters is equal to: 3 or 4. This number was then used to cut of the dendogram tree using the  cutree function in R. We show the resulting cluster membership in the table below.'))
+
+cat("\n")
+
+clusterCut3 <- cutree(clusters, 3)
+clusterCut4 <- cutree(clusters, 4)
+
+cat(paste0('The associated cluster assignments for both thresholds are as follows: \n', 'When using k=3, the assignments are as follows: \n'))
+
+
+kable(clusterCut3) %>% column_spec(1, bold = T, width = "5em") %>% kable_styling(bootstrap_options = "striped", full_width = F)
+
+cat(paste0(' \n', 'On the other hand, when k=4, the following assignments were made: \n'))
+
+kable(clusterCut4) %>% column_spec(1, bold = T, width = "5em") %>% kable_styling(bootstrap_options = "striped", full_width = F)
+
+cat("\n")
+
+save(clusterCut3, clusterCut4, pc_prop_var_explained_scaled,
+     file = "./Data/RGenerated/ScaledPcaClusters.RData")
+```
+
+
+## Presenting TimeSeries Clustering Results with Demographic Information {.tabset .tabset-fade}
+```{r TS_Clust_present, cache=TRUE, fig.align='center', results= 'asis', out.width='65%', message=FALSE, warning=FALSE}
+load(file = "./Data/RGenerated/NormMedianFilteredData.RData")
+load(file = "./Data/RGenerated/ScaledPcaClusters.RData")
+
+demograph = read.csv("https://raw.githubusercontent.com/fmegahed/fatigue-changepoint/master/Data/Raw/DemographicData.csv") # to read demographic data from GitHub'
+
+RPE = read.csv("https://raw.githubusercontent.com/fmegahed/fatigue-changepoint/master/Data/Raw/RPE.csv") # to read subjective rating of RPE data from GitHub'
+colnames(RPE)[1] <- "time.from.start"
+df_RPE_transformed <- melt(RPE,
+                           id.vars = "time.from.start",
+                           measure.vars = colnames(RPE)[2:16])
+df_RPE_transformed[,2] <- paste0("RPE.",df_RPE_transformed[,2])
+df_RPE_transformed$newcolumn <- "RPE"
+colnames(df_RPE_transformed)[4] <- "feature"
+
+clust_1_data <- df_RPE_transformed[FALSE,]
+clust_3_data <- df_RPE_transformed[FALSE,]
+clust_1_table <- demograph[FALSE,]
+clust_3_table <- demograph[FALSE,]
+
+for (i in 1:15) {
+  correct_subject_rows <- which(df_RPE_transformed[,2]==paste0("RPE.Subject.",i))
+
+  dataholder <- get(paste0("subject",i,"_medianf_norm"))
+  colnames(dataholder) <- c("time.from.start",
+                              paste0("scaled.stride.len.",i),
+                              paste0("scaled.stride.height.",i),
+                              paste0("stride.duration.",i))
+                            
+  df_transformed <- melt(dataholder,
+                     id.vars = "time.from.start",
+                       measure.vars=c(paste0("scaled.stride.len.",i),
+                                      paste0("scaled.stride.height.",i),
+                                      paste0("stride.duration.",i)
+                                      )
+                       )
+  df_transformed$newcolumn <- c(replicate(2000, "scaled.stride.len"),
+                                replicate(2000, "scaled.stride.height"),
+                                replicate(2000, "stride.duration"))
+  colnames(df_transformed)[4] <- "feature"
+  df_transformed <- rbind(df_transformed,df_RPE_transformed[correct_subject_rows,])
+
+  
+  if (clusterCut3[i]==1) {
+    clust_1_data <- rbind(clust_1_data,df_transformed)
+    clust_1_table <- rbind(clust_1_table,demograph[i,])
+  } else if (clusterCut3[i]==3) {
+    clust_3_data <- rbind(clust_3_data,df_transformed)
+    clust_3_table <- rbind(clust_3_table,demograph[i,])
+  }
+  
+}
+
+ 
+for (j in c(1,3)) {
+
+  cat('###',paste0("C", j), "{-}",'\n')
+
+  assign(paste0("g",j),
+        ggplot(data = get(paste0("clust_",j,"_data")),
+               aes(x=time.from.start, y=value, colour = variable)) + 
+          geom_line(size=1) +
+          theme_bw() +
+          facet_wrap(~feature,nrow=4, scales = "free_y") +
+          labs(title = paste("A paneled time-series plot for cluster",j)) + 
+          theme(legend.position="none",
+                 plot.title = element_text(hjust = 0.5))
+      )
+      
+      print(get(paste0("g",j)))
+      
+      kable(get(paste0("clust_",j,"_table"))) %>% column_spec(1, bold = T, width = "5em") %>% kable_styling(bootstrap_options = "striped", full_width = F)
+}
+  
+  cat('\n \n')
+
+
+```
 
 
 # Comments
