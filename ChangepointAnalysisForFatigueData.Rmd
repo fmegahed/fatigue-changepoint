@@ -1400,15 +1400,15 @@ We show the results from each analysis in the following subsections.
 ### Univariate TimeSeries Clustering based on the First PC of the Scaled Sensor Data
 ```{r TS_Clust, cache=TRUE, fig.align='center', results= 'asis', out.width='65%', message=FALSE, warning=FALSE}
 load(file = "./Data/RGenerated/NormMedianFilteredData.RData")
-load(file = "./Data/RGenerated/NormMedianFilteredData.RData")
+load(file = "./Data/RGenerated/NormCusumData.RData")
 # medianfilt_norm, cusum_norm
 
 pca_subjects_loadings_scaled <- list()
 pca_subjects_scaled <- data.frame(matrix(nrow=2000, ncol=15))
 pc_prop_var_explained_scaled <- vector()
 
-for (i in 1:length(medianfilt_norm)) {
-  df <- medianfilt_norm[[i]]
+for (i in 1:15) {
+  df <- get(paste0("subject",i,"_medianf_norm"))
   pca_dataholder <-  prcomp(df[,2:4], center=TRUE, scale. = T) # Scale <- Standardize Vars
   pca_subjects_loadings_scaled[[i]] <- pca_dataholder$rotation[,1] # Weights for First PC
   # Understanding the % Variation Explained by the First PC
