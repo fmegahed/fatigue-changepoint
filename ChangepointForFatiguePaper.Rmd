@@ -44,7 +44,7 @@ graphics.off() # close all graphics
 library(pacman) # needs to be installed first
 p_load(R.matlab, plotly, extrafont, grDevices, gridExtra,
        dplyr, stringr, tidyverse, utils, reshape2,
-       anomalize, MVN, fractal,
+       anomalize, MVN, forecast, fractal,
        ecp, dfphase1, 
        MALDIquant, TSclust,
        knitr, kableExtra) 

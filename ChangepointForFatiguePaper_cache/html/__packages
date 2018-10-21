@@ -1,10 +1,4 @@
 base
-methods
-datasets
-utils
-grDevices
-graphics
-stats
 pacman
 R.matlab
 ggplot2
@@ -35,3 +29,4 @@ pdc
 cluster
 knitr
 kableExtra
+TSclust
