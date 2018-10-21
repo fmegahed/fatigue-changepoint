@@ -47,7 +47,7 @@ p_load(R.matlab, plotly, extrafont, grDevices, gridExtra,
        anomalize, MVN, forecast, fractal,
        ecp, dfphase1, 
        MALDIquant, TSclust,
-       knitr, kableExtra) 
+       knitr, kableExtra, dplyr) 
 ```
 
 In the snippet below, we extract the 15 ".mat" files in the [GitHub repository](https://github.com/fmegahed/fatigue-changepoint/tree/master/Data/Raw) (where we loaded the data to allow for the reproduction of our work). Note that these files were originally produced in [Baghdadi et al., 2018](https://www.tandfonline.com/doi/abs/10.1080/00140139.2018.1442936?). Then, we perform several transformation steps: (a) extracting the data for the first three columns in the matlab arrays; and (b) computing three kinematic features from the data corresponding to these columns. Due to the differences between Matlab and R, this requires two nested *for* loops. The outer loop increments over the number of subjects, while the inner loop increments based on the different number of rows of data for each subject. Please see the comments within the code chunk for more details. 
@@ -650,9 +650,9 @@ cat(paste0('The associated cluster assignments for both thresholds are as follow
 
 kable(clusterCut3) %>% column_spec(1, bold = T, width = "5em") %>% kable_styling(bootstrap_options = "striped", full_width = F)
 
-cat(paste0(' \n', 'On the other hand, when k=4, the following assignments were made: \n'))
+#cat(paste0(' \n', 'On the other hand, when k=4, the following assignments were made: \n'))
 
-kable(clusterCut4) %>% column_spec(1, bold = T, width = "5em") %>% kable_styling(bootstrap_options = "striped", full_width = F)
+#kable(clusterCut4) %>% column_spec(1, bold = T, width = "5em") %>% kable_styling(bootstrap_options = "striped", full_width = F)
 
 cat("\n")
 
@@ -734,10 +734,9 @@ for (j in c(1,3)) {
       print(get(paste0("g",j)))
       
       kable(get(paste0("clust_",j,"_table"))) %>% column_spec(1, bold = T, width = "5em") %>% kable_styling(bootstrap_options = "striped", full_width = F)
-}
-  
-  cat('\n \n')
 
+      cat("\n \n")
+}
 
 ```
 
