@@ -596,11 +596,10 @@ To perform time-series clustering, we can do the following:
     
 We show the results from each analysis in the following subsections.
 
-## Univariate TimeSeries Clustering based on the First PC of the Scaled Sensor Data
+### Univariate TimeSeries Clustering based on the First PC of the Scaled Sensor Data
 ```{r TS_Clust, cache=TRUE, fig.align='center', results= 'asis', out.width='65%', message=FALSE, warning=FALSE}
 load(file = "./Data/RGenerated/NormMedianFilteredData.RData")
 load(file = "./Data/RGenerated/NormCusumData.RData")
-
 # medianfilt_norm, cusum_norm
 
 pca_subjects_loadings_scaled <- list()
@@ -660,6 +659,7 @@ cat("\n")
 save(clusterCut3, clusterCut4, pc_prop_var_explained_scaled,
      file = "./Data/RGenerated/ScaledPcaClusters.RData")
 ```
+
 
 ## Presenting TimeSeries Clustering Results with Demographic Information {.tabset .tabset-fade}
 ```{r TS_Clust_present, cache=TRUE, fig.align='center', results= 'asis', out.width='65%', message=FALSE, warning=FALSE}
@@ -732,6 +732,8 @@ for (j in c(1,3)) {
       )
       
       print(get(paste0("g",j)))
+      
+      kable(get(paste0("clust_",j,"_table"))) %>% column_spec(1, bold = T, width = "5em") %>% kable_styling(bootstrap_options = "striped", full_width = F)
 }
   
   cat('\n \n')
