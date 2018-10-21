@@ -666,8 +666,7 @@ save(clusterCut3, clusterCut4, pc_prop_var_explained_scaled,
 load(file = "./Data/RGenerated/NormMedianFilteredData.RData")
 load(file = "./Data/RGenerated/ScaledPcaClusters.RData")
 
-RPE = read.csv("https://raw.githubusercontent.com/fmegahed/fatigue-changepoint/master/Data/Raw/DemographicData.csv") # to read demographic data from GitHub'
-
+demograph = read.csv("https://raw.githubusercontent.com/fmegahed/fatigue-changepoint/master/Data/Raw/DemographicData.csv") # to read demographic data from GitHub'
 
 RPE = read.csv("https://raw.githubusercontent.com/fmegahed/fatigue-changepoint/master/Data/Raw/RPE.csv") # to read subjective rating of RPE data from GitHub'
 colnames(RPE)[1] <- "time.from.start"
@@ -680,6 +679,8 @@ colnames(df_RPE_transformed)[4] <- "feature"
 
 clust_1_data <- df_RPE_transformed[FALSE,]
 clust_3_data <- df_RPE_transformed[FALSE,]
+clust_1_table <- demograph[FALSE,]
+clust_3_table <- demograph[FALSE,]
 
 for (i in 1:15) {
   correct_subject_rows <- which(df_RPE_transformed[,2]==paste0("RPE.Subject.",i))
@@ -706,8 +707,10 @@ for (i in 1:15) {
   
   if (clusterCut3[i]==1) {
     clust_1_data <- rbind(clust_1_data,df_transformed)
+    clust_1_table <- rbind(clust_1_table,demograph[i,])
   } else if (clusterCut3[i]==3) {
     clust_3_data <- rbind(clust_3_data,df_transformed)
+    clust_3_table <- rbind(clust_3_table,demograph[i,])
   }
   
 }
