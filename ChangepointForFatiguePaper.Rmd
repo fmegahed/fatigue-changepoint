@@ -134,6 +134,54 @@ Based on the analysis above, there are **three observations** to be made. *First
 
 ****
 
+## Plotting the Data {.tabset .tabset-fade}
+First, we use a standard line plot to depict the data for each feature by person. For the sake of facilitating the visualization process, we: (a) panel the plot such that the left, center and right panels correspond to the scaled stride length, scaled stride height and step duration, respectively; and (b) we save the results of each participant (P) in a different tab.
+```{r LineGraph, cache=TRUE, fig.align='center', results='asis', out.width="65%"}
+# We are reading the data locally (you can download the file from GitHub)
+load(file = "./Data/RGenerated/FeatureGeneration.RData")
+for (i in 1:15) {
+  df_transformed <- melt(get(paste0("subject",i,"_features")),
+                         id.vars = "time.from.start",
+                         measure.vars=c("scaled.stride.len",
+                                        "scaled.stride.height",
+                                        "stride.duration"
+                                        )
+                         )
+  assign(paste0("p",i),
+         ggplot(data = df_transformed,
+                aes(x=time.from.start,y=value,group=variable,color=variable,
+                    shape=variable)) + 
+           geom_line() + theme_bw() + 
+           #ylim(0,2) +
+           ggtitle(paste0("Participant ",i,": Pre-filtered Data")) + 
+           theme(legend.position="none") + 
+           facet_wrap(~variable,nrow=3, scales = "free_y")
+         )
+  cat('###',paste0("P", i), "{-}",'\n')
+  print(get(paste0("p",i)))
+  cat('\n \n')
+  
+  stat_printdf <- get(paste0("subject",i,"_features"))
+  
+ cat(paste0('<source> <p> Based on the <b>raw data</b>, Participant ', i,
+             ' has an average scaled stride length of ',
+             round(mean(stat_printdf[,2]),2),
+             ', an average scaled stride height of ',
+             round(mean(stat_printdf[,3]),2),
+             ' and an average stride duration of ', round(mean(stat_printdf[,4]),2),
+             ' seconds. Based on their height of ', subject_heights[i],
+             ' meters, their average stride length and stride height are', ' ',
+             round(mean(stat_printdf[,2])*subject_heights[i],2),
+             ' and ', ' ', round(mean(stat_printdf[,3])*subject_heights[i],2),
+             ', respectively.', '</p> </source>'
+             )
+      )
+cat(' \n \n')
+}
+
+```
+
+
 # Implementation of the Filtering and Data Preprocessing 
 
 In this task, we examined several approaches for *outlier detection*. We originally hypothesized that these outliers constitue faulty sensor readings (since they are not sustained), and thus, we can remove this data prior to any further analysis. **However, based on a detailed investigation of the data and the application of several outlier detection methods (univariate and multivariate), we have learned that the data is non-normal, highly autocorrelated and non-stationary. Thus, these approaches are not suitable for removing the outliers from our data.** Thus, we then investiaged the utilization of "filtering" based methods in Section 3 to impute/correct/smoothen the data. 
@@ -147,7 +195,10 @@ After examining several outlier detection methods, i.e., boxplots for outlier de
   (C) Smoothing (i.e. a low pass filter on the data) will allow us to impute values for every stride (after an initial size window). This will allow us to preserve the successive nature of the strides, "fix" the outliers based on neighboring strides, and not throw away any observation.
 
 ## The Median Filtering Approach from the Signal Processing Literature {.tabset .tabset-fade}
-An algorithmic approach based on these observations is implemented below. Note that we are using the [median filter](https://onlinelibrary.wiley.com/doi/book/10.1002/9780470740156) from the [fractal package](https://cran.r-project.org/web/packages/fractal/fractal.pdf) on CRAN. Note that in the analysis below, we are applying the *median Filter*, with n=29 (i.e., the median is calculated based on a overlaping moving window of size 29 strides). We chose this window size based on the recommendation of our biomechanics expert as it allows us to: (a) ignore the effect of any turns in the direction of motion; and (b) the corresponding window size is approximately 30 seconds long (which presents an easy to remember rule for practical application).
+An algorithmic approach based on these observations is implemented below. Note that we are using the [median filter](https://onlinelibrary.wiley.com/doi/book/10.1002/9780470740156) from the [fractal package](https://cran.r-project.org/web/packages/fractal/fractal.pdf) on CRAN. In the analysis below, we are applying the *median Filter*, with n=29 (i.e., the median is calculated based on a overlaping moving window of size 29 strides). We chose this window size based on the recommendation of our biomechanics expert as it allows us to: (a) ignore the effect of any turns in the direction of motion; and (b) the corresponding window size is approximately 30 seconds long (which presents an easy to remember rule for practical application). The data processed with the median filtered approach is stored at the [following location](https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/MedianFilteredData.RData) in our GitHub Repository. The median filter was also applied on the CUSUM of the features and the results from this analysis can be found at: [CusumData.RData](https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/CusumData.RData).
+  
+
+
 ```{r SigProcOutlierDetection, cache=TRUE, fig.align='center', results='asis', out.width='65%', message=FALSE}
 # We are reading the data locally (you can download the file from GitHub)
 load(file = "./Data/RGenerated/FeatureGeneration.RData")
@@ -159,44 +210,68 @@ for (i in 1:15) {
   scaled.stride.height <- medianFilter(df[,3], order = 29) # moving window of size 29 obs
   stride.duration <- medianFilter(df[,4], order = 29) # moving window of size 29 obs
  
-  # Computing the first difference to make seein the values easier
-  diff.time.from.start <- time.from.start[-1]
-  diff.scaled.stride.len <- diff(scaled.stride.len)
-  diff.scaled.stride.height <- diff(scaled.stride.height)
-  diff.stride.duration <- diff(stride.duration)
-  # Remove the observations corresponding to the outliers
+   # Remove the observations corresponding to the outliers
   assign(paste0("subject",i,"_medianf"), 
          data.frame(cbind(time.from.start, scaled.stride.len, 
                           scaled.stride.height, stride.duration)))
   
-  assign(paste0("subject",i,"_median_diff_f"), 
-         data.frame(cbind( diff.time.from.start, diff.scaled.stride.len, 
-                          diff.scaled.stride.height, diff.stride.duration)))
+  # Preparing the data for the Line Graph
+  df_transformed <- melt(get(paste0("subject",i,"_medianf")),
+                         id.vars = "time.from.start",
+                         measure.vars=c("scaled.stride.len",
+                                        "scaled.stride.height",
+                                        "stride.duration"
+                                        )
+                         ) # ggplot data needs to be tall
   
+  assign(paste0("g",i),
+         ggplot(data = df_transformed,
+                aes(x=time.from.start, y=value, group=variable,
+                    color=variable,shape=variable)) + 
+           geom_line() + theme_bw() + 
+           ggtitle("Data post the application of the median filter") + 
+           theme(legend.position="none",
+                 #axis.text.x=element_text(angle=90,hjust=1),
+                 plot.title = element_text(hjust = 0.5)) +
+           facet_wrap(~variable,nrow=3, scales = "free_y")
+         )
+  
+  
+  cat('###',paste0("P", i), "{-}",'\n')
+  
+  print(get(paste0("g",i)))
+  
+  cat('\n')
+  
+  cat(paste0('<source> <p> Based on the <b>median filter</b>, Participant ', i,
+             ' has an average scaled stride length of ',
+             round(mean(scaled.stride.len),2),
+             ', an average scaled stride height of ',
+             round(mean(scaled.stride.height),2),
+             ' and an average stride duration of ', round(mean(stride.duration),2),
+             ' seconds. Based on their height of ', subject_heights[i],
+             ' meters, their average stride length and stride height are', ' ',
+             round(mean(scaled.stride.len)*subject_heights[i],2),
+             ' and ', ' ', round(mean(scaled.stride.height)*subject_heights[i],2),
+             ', respectively.', '</p> </source>'
+             )
+      )
+    
+  cat(' \n \n')
+
 }
 
-  cat('<source> <p> The data processed with the median filtered approach is stored at the <a href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/MedianFilteredData.RData">following location</a> in our GitHub Repository.')
-  cat('\n \n')
-  
 # Saving a list of cleaned 
 save(subject1_medianf, subject2_medianf, subject3_medianf, subject4_medianf,
      subject5_medianf, subject6_medianf, subject7_medianf, subject8_medianf,
      subject9_medianf, subject10_medianf, subject11_medianf, subject12_medianf,
      subject13_medianf, subject14_medianf, subject15_medianf,
-     subject1_median_diff_f, subject2_median_diff_f, subject3_median_diff_f,
-     subject4_median_diff_f,
-     subject5_median_diff_f, subject6_median_diff_f, subject7_median_diff_f,
-     subject8_median_diff_f,
-     subject9_median_diff_f, subject10_median_diff_f, subject11_median_diff_f,
-     subject12_median_diff_f,
-     subject13_median_diff_f, subject14_median_diff_f, subject15_median_diff_f,
      file = "./Data/RGenerated/MedianFilteredData.RData")
-```
 
+###################################################################################
+# Applying the Median Filter Methodology on the CUSUM of the Features
 
-## Applying the Median Filter Methodology on the CUSUM of the Features {.tabset .tabset-fade}
-```{r CUSUM, fig.align='center', results='asis', out.width='65%', message=FALSE, cache=TRUE}
-  load(file = "./Data/RGenerated/MedianFilteredData.RData")
+load(file = "./Data/RGenerated/MedianFilteredData.RData")
   for (i in 1:15) {
     df <- get(paste0("subject",i,"_medianf"))
   means <- colMeans(df)
@@ -207,20 +282,19 @@ save(subject1_medianf, subject2_medianf, subject3_medianf, subject4_medianf,
     
   }
 
- cat('<source> <p> The results from the analysis above can be found at: <a href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/CusumData.RData">CusumData.RData</a>. </p> </source>')
-  cat('\n \n')
-  
+# Saving a list of cleaned 
 save(subject1_cusum, subject2_cusum, subject3_cusum,
      subject4_cusum, subject5_cusum, subject6_cusum,
      subject7_cusum, subject8_cusum, subject9_cusum,
      subject10_cusum, subject11_cusum, subject12_cusum,
      subject13_cusum, subject14_cusum, subject15_cusum,
        file = "./Data/RGenerated/CusumData.RData")
+
 ```
 
 
 ## Using %Time-from-Start to Standardize the Length of Each Participant's Time-series {.tabset .tabset-fade}
-In this section, we rescale/normalize the timescale a 0-100% scale for all participants to prepare for a timeseries clustering type analysis. Specifically, we sampled the three features from the data based on a 0.05% from start. This resulted in a standardization of the number of observations within each timeseries across our 15 paricipants. Based on our increment size, each timeseries is now comprised of 2000 observations, each at 0.05% time increment from its neighouring data points.
+In this section, we rescale/normalize the timescale a 0-100% scale for all participants to prepare for a timeseries clustering type analysis. Specifically, we sampled the three features from the data based on a 0.05% from start. This resulted in a standardization of the number of observations within each timeseries across our 15 paricipants. Based on our increment size, each timeseries is now comprised of 2000 observations, each at 0.05% time increment from its neighouring data points. The rest of our analysis will be performed on this standardized data. The normalized data can be found at: [NormMedianFilteredData.RData](https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/NormMedianFilteredData.RData) and [NormCusumData.RData](https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/NormCusumData.RData)
 
 ```{r Data_normalization, cache=TRUE, fig.align='center', results='asis', out.width='100%', message=FALSE, warning=FALSE}
 # to load previously generated data 
@@ -250,12 +324,12 @@ for (i in 1:15) {
   # median filter  
   df <- get(paste0("subject",i,"_features_norm")) # Getting Data from Sec.
   # Obtaining the Outliers for each of the three variables
-  time.from.start <- df[,1]
+  percent.time.from.start <- df[,1]
   scaled.stride.len <- medianFilter(df[,2], order = 29) # moving window of size 29 obs
   scaled.stride.height <- medianFilter(df[,3], order = 29) # moving window of size 29 obs
   stride.duration <- medianFilter(df[,4], order = 29) # moving window of size 29 obs
   assign(paste0("subject",i,"_medianf_norm"), 
-         data.frame(cbind(time.from.start, scaled.stride.len, 
+         data.frame(cbind(percent.time.from.start, scaled.stride.len, 
                           scaled.stride.height, stride.duration)))
   medianfilt_norm[[i]] <- get(paste0("subject",i,"_medianf_norm"))
 
@@ -271,9 +345,6 @@ for (i in 1:15) {
   
 }
 
-  cat(paste0('</b> </font> The normalized data can be found at: <a href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/NormMedianFilteredData.RData">NormMedianFilteredData.RData</a> and <a 
-href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/NormCusumData.RData">NormCusumData.RData</a> </p> </source>')
-  )
 
 save(subject1_medianf_norm, subject2_medianf_norm, subject3_medianf_norm, subject4_medianf_norm,
      subject5_medianf_norm, subject6_medianf_norm, subject7_medianf_norm, subject8_medianf_norm,
@@ -300,6 +371,7 @@ A common approach for changepoint detection is to project the multivariate probl
   (B) Number of changepoints is still large with sig.lvl = 0.001;  
   
 For this reason, we do not think that this approach is promising. We will move on to the multivariate approach.
+
 
 ## The Nonparameteric Approach of Matterson & James (ECP) 
 In this section, we will examine the use of the approach of [Matteson and James (2014)](https://amstat.tandfonline.com/doi/abs/10.1080/01621459.2013.849605) for multiple change point analysis of our trivariate data. Our analysis takes advantage of their **R** package titled *ecp*, which is described in more details in the following paper: [James and Matteson (2014)](https://cran.r-project.org/web/packages/ecp/vignettes/ecp.pdf). The multivariate changepoint method will be first tested using the median filtered data and then using the CUSUM of the median filtered data.
@@ -329,8 +401,42 @@ To apply the *ecp approach of [Matteson and James (2014)](https://amstat.tandfon
                   penalty = pen)
       fatigue_from_ECP <- y$estimates # Returns observation number
       changepoints_medianf[[i]] <- df[fatigue_from_ECP,1]
-  }
+      
+      cat('####',paste0("P", i), "{-}",'\n')
+      df_transformed <- melt(get(paste0("subject",i,"_medianf_norm")),
+                         id.vars = "percent.time.from.start",
+                         measure.vars=c("scaled.stride.len",
+                                        "scaled.stride.height",
+                                        "stride.duration"
+                                        )
+                         ) # ggplot data needs to be tall
+      
+      assign(paste0("g",i),
+         ggplot(data = df_transformed,
+                aes(x=percent.time.from.start, y=value, group=variable,
+                    color=variable,shape=variable)) + 
+           geom_line() + theme_bw() + 
+           ggtitle("Changepoints for the Median Filtered Data (at vertical black lines)") + 
+           theme(legend.position="none",
+                 #axis.text.x=element_text(angle=90,hjust=1),
+                 plot.title = element_text(hjust = 0.5)) +
+           facet_wrap(~variable,nrow=3, scales = "free_y") +
+           geom_vline(xintercept= changepoints_medianf[[i]])
+         )
+      
+      print(get(paste0("g",i)))
   
+  cat('\n')
+  
+  cat(paste0('<source> <p> Based on the <b>ecp package</b>, the number of changepoints for participant ', i,
+             ' is equal to: ',
+             length(changepoints_medianf[[i]]),
+             '. These changepoints are located at: ',
+             paste(round(changepoints_medianf[[i]]), collapse = ", "),
+             '. The results from the analysis above can be found at: <a href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/ECPChangePointsMFData.RData">ECPChangePointsMFData.RData</a>. </p> </source>')
+      )
+  cat('\n \n')
+  }
 save(changepoints_medianf,
        file = "./Data/RGenerated/ECPChangePointsMFData.RData")
 ```
@@ -361,23 +467,60 @@ load(file = "./Data/RGenerated/NormCusumData.RData")
                   penalty = pen)
       fatigue_from_CUSUM_ECP <- y$estimates
       changepoints_cusum[[i]] <- df[fatigue_from_CUSUM_ECP,1]
-  }
+      
+      cat('####',paste0("P", i), "{-}",'\n')
+      df_transformed <- melt(get(paste0("subject",i,"_cusum_norm")),
+                         id.vars = "percent.time.from.start",
+                         measure.vars=c("scaled.stride.len",
+                                        "scaled.stride.height",
+                                        "stride.duration"
+                                        )
+                         ) # ggplot data needs to be tall
+      
+      assign(paste0("g",i),
+         ggplot(data = df_transformed,
+                aes(x=percent.time.from.start, y=value, group=variable,
+                    color=variable,shape=variable)) + 
+           geom_line() + theme_bw() + 
+           ggtitle("Changepoints for the CUSUMs of the Median Filtered Data (vertical black lines)") + 
+           theme(legend.position="none",
+                 #axis.text.x=element_text(angle=90,hjust=1),
+                 plot.title = element_text(hjust = 0.5)) +
+           facet_wrap(~variable,nrow=3, scales = "free_y") +
+           geom_vline(xintercept= changepoints_cusum[[i]])
+         )
+      
+      print(get(paste0("g",i)))
   
+  cat('\n')
+  
+  cat(paste0('<source> <p> Based on the <b>ecp package</b>, the number of changepoints for the cusums of the median filtered data for participant ', i,
+             ' is equal to: ',
+             length(changepoints_cusum[[i]]),
+             '. These changepoints are located at: ',
+             paste(round(changepoints_cusum[[i]]), collapse = ", "),
+             '. The results from the analysis above can be found at: <a href="https://github.com/fmegahed/fatigue-changepoint/blob/master/Data/RGenerated/ECPChangePointsCUSUM.RData">ECPChangePointsCUSUM.RData</a>. </p> </source>')
+      )
+  cat('\n \n')
+  }
 save(changepoints_cusum,
        file = "./Data/RGenerated/ECPChangePointsCUSUM.RData")
 ```
 
-To compare the performance of the ECP approach, we also investigated using the approach of [Cappizi and Masarotto (2016)](https://amstat.tandfonline.com/doi/abs/10.1080/00401706.2016.1272494) for another nonparameteric multivariate changepoint analysis method. Similar to the *ecp approach*, we applied their methodology on the: (a) median filtered data; and (b) cusums of the median filtered data.
 
-## Comments on the ECP and dfphase1 Methods
+## Comments on the the Change Point Detection Method
+
+To compare the performance of the ECP approach, we also investigated using the approach of [Cappizi and Masarotto (2016)](https://amstat.tandfonline.com/doi/abs/10.1080/00401706.2016.1272494) for another nonparameteric multivariate changepoint analysis method (dfphase1). Similar to the *ecp approach*, we applied their methodology on the: (a) median filtered data; and (b) cusums of the median filtered data with the similar window size, i.e. 120 strides ($\small m_{dfphase1}=120$). **Note that we did not perform the analysis on the differences since we concluded that it was less informative than (a) and (b).** 
+
+For the parameterization of the [Cappizi and Masarotto (2016)](https://amstat.tandfonline.com/doi/abs/10.1080/00401706.2016.1272494) approach, we used the default parameters of the [mphase1() function from the dfphase1 package](https://cran.r-project.org/web/packages/dfphase1/dfphase1.pdf) with the exception of:  
+  -- *isolated = FALSE* since we do not expect shifts to last only 120 strides.  
+
 Based on our results, the approach of [Matterson and James (2016)](https://amstat.tandfonline.com/doi/abs/10.1080/01621459.2013.849605) is preferred since it:
 
   (A) Results in a more limited number of changepoints, highlighting more (practically) significant changes in the gait parameters. This result was somewhat surprising since we used the default settings for the approach of [Capizzi and Masarotto (2016)](https://amstat.tandfonline.com/doi/abs/10.1080/00401706.2016.1272494) throught the default [mphase1()](https://cran.r-project.org/web/packages/dfphase1/dfphase1.pdf), which prevents having changepoints within 5 windows. Note that this result holds true even when we adjusted the $\small \alpha =0.001$ instead of the default of $\small \alpha =0.05$:) for the mphase1() method (without adjusting the ecp() method since it does not allow for adjusting the false alarm rate); and  
   
   (B) Is more computationally efficient. It had a shorter run time than the other approach.
   
-In addition, from the analysis, the changepoints based on the CUSUM of the median filtered data are the most insightful. Specifically, one can discern how each participant's performance change as the experiment goes on. For example, P10 has a clear fatigued performance in the end, where the cusums of the stride length and stride height are decreasing rapidly after stride 5521.
-
 
 # Comparing the ECP Changepoints with Participants' Subjective Ratings  
 Throughout the experiments, participants provided their subjective ratings every 10 minutes. The ratings were based on the [Borg 6-20 RPE scale](https://www.tandfonline.com/doi/abs/10.1080/00140139.2018.1442936). Recent literature on fatigue detection suggests that a rating of 13 can be used to estimate the onset of fatigue (see [Maman et al. (2017)](https://www.sciencedirect.com/science/article/pii/S0003687017300261) for a detailed analysis). The subjective ratings for each participant can be accessed at: [subjective-ratings-raw](https://github.com/fmegahed/fatigue-changepoint/tree/master/Data/Raw).
@@ -390,14 +533,14 @@ In this section, we perform the following tasks:
 
 (B) A threshold based comparison, where we use $\small RPE \ge 13$ to identify when a participant becomes fatigued and we compare that to the changepoints detected by the hybrid CUSUM-EPC approach; and 
 
-(C) Utilize the [e.divisive() from the ecp package](https://cran.r-project.org/web/packages/ecp/vignettes/ecp.pdf) to obtain the changepoints for the Borg Ratings. Note that this function is the univariate approach for the multiple changepoint method examined in Section 4.1. 
+(C) Utilize the [e.divisive() from the ecp package](https://cran.r-project.org/web/packages/ecp/vignettes/ecp.pdf) to obtain the changepoints for the Borg Ratings. Note that this function is the univariate approach for the multiple changepoint method examined in Section 3.1. 
 
 ```{r RPE_AnalysisMF, cache=TRUE, fig.align='center', results='asis', out.width='100%', message=FALSE, warning=FALSE}
 RatingThresh <- 13  # based on Maman et al. 2017 
 RPE = read.csv("https://raw.githubusercontent.com/fmegahed/fatigue-changepoint/master/Data/Raw/RPE.csv") # to read subjective rating of RPE data from GitHub'
-colnames(RPE)[1] <- "time.from.start"
+colnames(RPE)[1] <- "percent.time.from.start"
 df_RPE_transformed <- melt(RPE,
-                           id.vars = "time.from.start",
+                           id.vars = "percent.time.from.start",
                            measure.vars = colnames(RPE)[2:16])
 df_RPE_transformed[,2] <- paste0(df_RPE_transformed[,2],".RPE")
 # to load previously generated data and changepoints 
@@ -425,7 +568,7 @@ for (i in 1:15) {
   
   cat('###',paste0("P", i), "{-}",'\n')
   df_transformed <- melt(get(paste0("subject",i,"_medianf_norm")),
-                       id.vars = "time.from.start",
+                       id.vars = "percent.time.from.start",
                        measure.vars=c("scaled.stride.len",
                                       "scaled.stride.height",
                                       "stride.duration"
@@ -436,7 +579,7 @@ for (i in 1:15) {
       
   assign(paste0("g",i),
         ggplot(data = df_transformed,
-               aes(x=time.from.start, y=value, colour = variable)) + 
+               aes(x=percent.time.from.start, y=value, colour = variable)) + 
           geom_line(size=1) +
           theme_bw() +
           scale_colour_manual(values = c("red", "green", "blue","black","grey40")) +
@@ -458,7 +601,7 @@ for (i in 1:15) {
   
   cat('\n \n')
   
-  cat(paste0('<source> <p> In the above figure, the colored vertical lines correspond to the following.  First, the <b> black  lines are used to denote the changepoints based on the non-parameteric, multivariate, ECP approach on the Kinematic Features. </b> These changepoints are what we obtained in Section 4.1.3. Second, the <font color= #63B8FF> <b>steelblue line  correspond to the time from start in seconds, when the subject has a RPE that equals or exceeds 13. </b> </font> Note that we only indicate the first occurence when the RPE>=13 on the graphs. Third, the <b> <font color=#CCCCCC> gray lines  denote the univariate, nonparametric changepoints obtained from applying the e.divisive() on the RPE values from the subject. </font> </b>',
+  cat(paste0('<source> <p> In the above figure, the colored vertical lines correspond to the following.  First, the <b> black  lines are used to denote the changepoints based on the non-parameteric, multivariate, ECP approach on the Kinematic Features. </b> These changepoints are what we obtained in Section 3.1.1. Second, the <font color= #63B8FF> <b>steelblue line  correspond to the time from start in seconds, when the subject has a RPE that equals or exceeds 13. </b> </font> Note that we only indicate the first occurence when the RPE>=13 on the graphs. Third, the <b> <font color=#CCCCCC> gray lines  denote the univariate, nonparametric changepoints obtained from applying the e.divisive() on the RPE values from the subject. </font> </b>',
 '.  </font> </b> \n \n'))
   
   cat(paste0('<source> <p> Based on the <b>ecp package, the number of changepoints for the the median filtered data for participant ', i,
@@ -492,13 +635,13 @@ In this section, we perform the following tasks:
 
 (B) A threshold based comparison, where we use $\small RPE \ge 13$ to identify when a participant becomes fatigued and we compare that to the changepoints detected by the hybrid CUSUM-EPC approach; and 
 
-(C) Utilize the [e.divisive() from the ecp package](https://cran.r-project.org/web/packages/ecp/vignettes/ecp.pdf) to obtain the changepoints for the Borg Ratings. Note that this function is the univariate approach for the multiple changepoint method examined in Section 4.1. 
+(C) Utilize the [e.divisive() from the ecp package](https://cran.r-project.org/web/packages/ecp/vignettes/ecp.pdf) to obtain the changepoints for the Borg Ratings. Note that this function is the univariate approach for the multiple changepoint method examined in Section 3.1. 
 ```{r RPE_Analysis, cache=TRUE, fig.align='center', results='asis', out.width='100%', message=FALSE, warning=FALSE}
 RatingThresh <- 13  # based on Maman et al. 2017 
 RPE = read.csv("https://raw.githubusercontent.com/fmegahed/fatigue-changepoint/master/Data/Raw/RPE.csv") # to read subjective rating of RPE data from GitHub'
-colnames(RPE)[1] <- "time.from.start"
+colnames(RPE)[1] <- "percent.time.from.start"
 df_RPE_transformed <- melt(RPE,
-                           id.vars = "time.from.start",
+                           id.vars = "percent.time.from.start",
                            measure.vars = colnames(RPE)[2:16])
 df_RPE_transformed[,2] <- paste0(df_RPE_transformed[,2],".RPE")
 # to load previously generated data and changepoints 
@@ -525,7 +668,7 @@ for (i in 1:15) {
   
   cat('###',paste0("P", i), "{-}",'\n')
   df_transformed <- melt(get(paste0("subject",i,"_cusum_norm")),
-                       id.vars = "time.from.start",
+                       id.vars = "percent.time.from.start",
                        measure.vars=c("scaled.stride.len",
                                       "scaled.stride.height",
                                       "stride.duration"
@@ -535,7 +678,7 @@ for (i in 1:15) {
   
   assign(paste0("g",i),
         ggplot(data = df_transformed,
-               aes(x=time.from.start, y=value, colour = variable)) + 
+               aes(x=percent.time.from.start, y=value, colour = variable)) + 
           geom_line(size=1) +
           theme_bw() +
           scale_colour_manual(values = c("red", "green", "blue","black","grey40")) +
@@ -557,7 +700,7 @@ for (i in 1:15) {
   
   cat('\n \n')
   
-  cat(paste0('<source> <p> In the above figure, the colored vertical lines correspond to the following.  First, the <b> black  lines are used to denote the changepoints based on the non-parameteric, multivariate, ECP approach on the CUSUMS of the Kinematic Features. </b> These changepoints are what we obtained in Section 4.1.3. Second, the <font color= #63B8FF> <b>steelblue line  correspond to the time from start in seconds, when the subject has a RPE that equals or exceeds 13. </b> </font> Note that we only indicate the first occurence when the RPE>=13 on the graphs. Third, the <b> <font color=#CCCCCC> gray lines  denote the univariate, nonparametric changepoints obtained from applying the e.divisive() on the RPE values from the subject. </font> </b>',
+  cat(paste0('<source> <p> In the above figure, the colored vertical lines correspond to the following.  First, the <b> black  lines are used to denote the changepoints based on the non-parameteric, multivariate, ECP approach on the CUSUMS of the Kinematic Features. </b> These changepoints are what we obtained in Section 3.1.2. Second, the <font color= #63B8FF> <b>steelblue line  correspond to the time from start in seconds, when the subject has a RPE that equals or exceeds 13. </b> </font> Note that we only indicate the first occurence when the RPE>=13 on the graphs. Third, the <b> <font color=#CCCCCC> gray lines  denote the univariate, nonparametric changepoints obtained from applying the e.divisive() on the RPE values from the subject. </font> </b>',
 '. </font> </b> \n \n'))
   
   cat(paste0('<source> <p> Based on the <b>ecp package, the number of changepoints for the cusums of the median filtered data for participant ', i,
@@ -594,9 +737,9 @@ To perform time-series clustering, we can do the following:
     - using the median filtered scaled data;  
     - using the scaled, median filtered and then cusumed data.  
     
-We show the results from each analysis in the following subsections.
+We show the results from univariate time-series clustering using the first PC of the scaled median filtered data in the following subsection.
 
-### Univariate TimeSeries Clustering based on the First PC of the Scaled Sensor Data
+## Univariate TimeSeries Clustering based on the First PC of the Scaled Sensor Data
 ```{r TS_Clust, cache=TRUE, fig.align='center', results= 'asis', out.width='65%', message=FALSE, warning=FALSE}
 load(file = "./Data/RGenerated/NormMedianFilteredData.RData")
 load(file = "./Data/RGenerated/NormCusumData.RData")
@@ -623,8 +766,6 @@ dimnames(distances) <- paste0("P",seq(1,15,1))
 
 cat(paste0('<source> <p> Based on the above analysis, the % variation explained by the first principal component of the scaled median filtered data for each participant is equal to: ', paste(round(pc_prop_var_explained_scaled, 2), collapse = ", "), '. To understand how the underlying multivariate time series methods are similar, we applied a heirarchical clustering algorithm based on the distances obtained using the <i> Dynamic Time Warping Method </i>. The resulting dendogram is shown in the figure below. </p> </source>'))
 
-cat("\n")
-
 # distances.matrix <- as.matrix(distances)
 # heatmap(distances.matrix)
 
@@ -636,28 +777,20 @@ plot(clusters, hang=0.1, check = TRUE,
      main = "Cluster Dendogram based on the DTWARP distances")
 
 
-cat("\n")
-
-cat(paste0('Based on the above dendogram, one can see that the best choice for total number of clusters is equal to: 3 or 4. This number was then used to cut of the dendogram tree using the  cutree function in R. We show the resulting cluster membership in the table below.'))
-
-cat("\n")
+cat(paste0('Based on the above dendogram, one can see that the best choice for total number of clusters is equal to: 3 or 4. This number was then used to cut of the dendogram tree using the  cutree function in R. We show the resulting cluster membership in the table below. The associated cluster assignments for both thresholds are as follows: \n', 'When using k=3, the assignments are as follows: \n'))
 
 clusterCut3 <- cutree(clusters, 3)
 clusterCut4 <- cutree(clusters, 4)
 
-cat(paste0('The associated cluster assignments for both thresholds are as follows: \n', 'When using k=3, the assignments are as follows: \n'))
-
-
-kable(clusterCut3) %>% column_spec(1, bold = T, width = "5em") %>% kable_styling(bootstrap_options = "striped", full_width = F)
-
-#cat(paste0(' \n', 'On the other hand, when k=4, the following assignments were made: \n'))
-
-#kable(clusterCut4) %>% column_spec(1, bold = T, width = "5em") %>% kable_styling(bootstrap_options = "striped", full_width = F)
-
-cat("\n")
-
 save(clusterCut3, clusterCut4, pc_prop_var_explained_scaled,
      file = "./Data/RGenerated/ScaledPcaClusters.RData")
+
+#kable(t(clusterCut4)) %>% column_spec(1, bold = T, width = "5em") %>% kable_styling(bootstrap_options = "striped", full_width = F)
+
+kable(t(clusterCut3), row.names = NA, caption = "Cluster Assignment for each Participant") %>% column_spec(1, bold = T, width = "5em") %>% kable_styling(bootstrap_options = "striped", full_width = F)
+
+
+
 ```
 
 
@@ -670,28 +803,29 @@ load(file = "./Data/RGenerated/NormMedianFilteredData.RData")
 load(file = "./Data/RGenerated/ScaledPcaClusters.RData")
 
 RPE = read.csv("https://raw.githubusercontent.com/fmegahed/fatigue-changepoint/master/Data/Raw/RPE.csv") # to read subjective rating of RPE data from GitHub'
-colnames(RPE)[1] <- "time.from.start"
+colnames(RPE)[1] <- "percent.time.from.start"
 df_RPE_transformed <- melt(RPE,
-                           id.vars = "time.from.start",
+                           id.vars = "percent.time.from.start",
                            measure.vars = colnames(RPE)[2:16])
 df_RPE_transformed[,2] <- paste0("RPE.",df_RPE_transformed[,2])
 df_RPE_transformed$newcolumn <- "RPE"
 colnames(df_RPE_transformed)[4] <- "feature"
 
 clust_1_data <- df_RPE_transformed[FALSE,]
+clust_2_data <- df_RPE_transformed[FALSE,]
 clust_3_data <- df_RPE_transformed[FALSE,]
 
 for (i in 1:15) {
   correct_subject_rows <- which(df_RPE_transformed[,2]==paste0("RPE.Subject.",i))
 
   dataholder <- get(paste0("subject",i,"_medianf_norm"))
-  colnames(dataholder) <- c("time.from.start",
+  colnames(dataholder) <- c("percent.time.from.start",
                               paste0("scaled.stride.len.",i),
                               paste0("scaled.stride.height.",i),
                               paste0("stride.duration.",i))
                             
   df_transformed <- melt(dataholder,
-                     id.vars = "time.from.start",
+                     id.vars = "percent.time.from.start",
                        measure.vars=c(paste0("scaled.stride.len.",i),
                                       paste0("scaled.stride.height.",i),
                                       paste0("stride.duration.",i)
@@ -706,62 +840,110 @@ for (i in 1:15) {
   
   if (clusterCut3[i]==1) {
     clust_1_data <- rbind(clust_1_data,df_transformed)
+  } else if (clusterCut3[i]==2) {
+    clust_2_data <- rbind(clust_2_data,df_transformed)
   } else if (clusterCut3[i]==3) {
     clust_3_data <- rbind(clust_3_data,df_transformed)
   }
   
 }
 
- 
-for (j in c(1,3)) {
 
-  cat('###',paste0("C", j), "{-}",'\n')
-
-  assign(paste0("g",j),
-        ggplot(data = get(paste0("clust_",j,"_data")),
-               aes(x=time.from.start, y=value, colour = variable)) + 
-          geom_line(size=1) +
-          theme_bw() +
-          facet_wrap(~feature,nrow=4, scales = "free_y") +
-          labs(title = paste("A paneled time-series plot for cluster",j)) + 
-          theme(legend.position="none",
-                 plot.title = element_text(hjust = 0.5))
-      )
-      
-      print(get(paste0("g",j)))
-    
-
-      cat("\n \n")
-}
-
-```
-
-```{r Demog_present, cache=TRUE, fig.align='center', results= 'asis', out.width='65%', message=FALSE, warning=FALSE}
+#########################################################################
 
 demograph = read.csv("https://raw.githubusercontent.com/fmegahed/fatigue-changepoint/master/Data/Raw/DemographicData.csv") # to read demographic data from GitHub'
 
+
 clust_1_table <- demograph[FALSE,]
+clust_2_table <- demograph[FALSE,]
 clust_3_table <- demograph[FALSE,]
 
 for (i in 1:15) {
  if (clusterCut3[i]==1) {
     clust_1_table <- rbind(clust_1_table,demograph[i,])
+  } else if (clusterCut3[i]==2) {
+    clust_2_table <- rbind(clust_2_table,demograph[i,])
   } else if (clusterCut3[i]==3) {
     clust_3_table <- rbind(clust_3_table,demograph[i,])
   }
 }
 
-for (j in c(1,3)) {
-    cat('###',paste0("C", j), "{-}",'\n')
-    kable(get(paste0("clust_",j,"_table"))) %>% column_spec(1, bold = T, width = "5em") %>% kable_styling(bootstrap_options = "striped", full_width = F)
-    cat("\n")
-}
+clust_1_means <- colMeans(x=clust_1_table[,2:7], na.rm = TRUE)
+clust_1_sd <- apply(clust_1_table[,2:7], 2, sd, na.rm = TRUE)
+clust_1_summary <- rbind(clust_1_means,clust_1_sd)
+
+clust_2_means <- colMeans(x=clust_2_table[,2:7], na.rm = TRUE)
+clust_2_sd <- apply(clust_2_table[,2:7], 2, sd, na.rm = TRUE)
+clust_2_summary <- rbind(clust_2_means,clust_2_sd)
+
+clust_3_means <- colMeans(x=clust_3_table[,2:7], na.rm = TRUE)
+clust_3_sd <- apply(clust_3_table[,2:7], 2, sd, na.rm = TRUE)
+clust_3_summary <- rbind(clust_3_means,clust_3_sd)
+
+#########################################################################
+ 
+
+cat('###',paste0("C", 1), "{-}",'\n')
+
+assign(paste0("g",1),
+    ggplot(data = clust_1_data,
+           aes(x=percent.time.from.start, y=value, colour = variable)) + 
+      geom_line(size=1) +
+      theme_bw() +
+      facet_wrap(~feature,nrow=4, scales = "free_y") +
+      labs(title = paste("A paneled time-series plot for cluster",1)) + 
+      theme(legend.position="none",
+             plot.title = element_text(hjust = 0.5))
+  )
+  
+  print(get(paste0("g",1)))
+  
+kable(data.matrix(clust_1_summary) , format = "html") %>% column_spec(1, bold = T, width = "5em") %>% kable_styling(bootstrap_options = "striped", full_width = F)
+
+
+cat('###',paste0("C", 2), "{-}",'\n')
+
+assign(paste0("g",2),
+    ggplot(data = clust_2_data,
+           aes(x=percent.time.from.start, y=value, colour = variable)) + 
+      geom_line(size=1) +
+      theme_bw() +
+      facet_wrap(~feature,nrow=4, scales = "free_y") +
+      labs(title = paste("A paneled time-series plot for cluster",2)) + 
+      theme(legend.position="none",
+             plot.title = element_text(hjust = 0.5))
+  )
+  
+  print(get(paste0("g",2)))
+  
+kable(data.matrix(clust_2_summary) , format = "html") %>% column_spec(1, bold = T, width = "5em") %>% kable_styling(bootstrap_options = "striped", full_width = F)
+
+cat('###',paste0("C", 3), "{-}",'\n')
+
+assign(paste0("g",3),
+    ggplot(data = clust_3_data,
+           aes(x=percent.time.from.start, y=value, colour = variable)) + 
+      geom_line(size=1) +
+      theme_bw() +
+      facet_wrap(~feature,nrow=4, scales = "free_y") +
+      labs(title = paste("A paneled time-series plot for cluster",3)) + 
+      theme(legend.position="none",
+             plot.title = element_text(hjust = 0.5))
+  )
+  
+  print(get(paste0("g",3)))
+  
+kable(data.matrix(clust_3_summary) , format = "html") %>% column_spec(1, bold = T, width = "5em") %>% kable_styling(bootstrap_options = "striped", full_width = F)
+
+
+
 
 ```
 
 
-# Comments
-From B and C, we are hoping to develop a general diagnosis/understanding of how fatigue develops (e.g., we start with a ramp up phase, then steady state, then fatigue starting, and then person is totally fatigued).
+## Interpretation of the Clustering Results Compared to the Subjects' Demographic/Anthropometric/Subjective Information
+
+The overall results show a tendency for a gender dependency in the grouping scheme (gender index for C1 = 0.37 and for C3 = 0.57) indicating a convergence in the stride features toward the second half of the experiment for C1. This condition is applicable for the RPE in C2. A multinomial logistic regression was performed on each of the measures in the Figures in Section 5.2 as well as the whole set to examine the predictability of the cluster membership from the demographic/anthropometric/subjective measures, however, none of the parameters were significant on the relative risk of being in C1 compared to C3, i.e, p-value > 0.05. We are hoping to develop a general diagnosis/understanding of how fatigue develops (e.g., we start with a ramp up phase, then steady state, then fatigue starting, and then person is totally fatigued).
 
 
 <!-- # Things to Do Next -->
