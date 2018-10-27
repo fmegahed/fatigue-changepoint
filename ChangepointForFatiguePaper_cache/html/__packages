@@ -1,4 +1,10 @@
 base
+methods
+datasets
+utils
+grDevices
+graphics
+stats
 pacman
 R.matlab
 ggplot2
@@ -15,8 +21,8 @@ purrr
 forcats
 reshape2
 anomalize
-forecast
 MVN
+forecast
 splus2R
 ifultools
 fractal
@@ -27,6 +33,6 @@ MALDIquant
 wmtsa
 pdc
 cluster
+TSclust
 knitr
 kableExtra
-TSclust
