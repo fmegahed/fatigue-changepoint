@@ -1448,12 +1448,11 @@ clusterCut4 <- cutree(clusters, 4)
 
 cat(paste0('The associated cluster assignments for both thresholds are as follows: \n', 'When using k=3, the assignments are as follows: \n'))
 
-
-kable(clusterCut3) %>% column_spec(1, bold = T, width = "5em") %>% kable_styling(bootstrap_options = "striped", full_width = F)
+kable(t(clusterCut3), row.names = NA, caption = "Cluster Assignment for each Participant | k=3") %>% column_spec(1, bold = T, width = "5em") %>% kable_styling(bootstrap_options = "striped", full_width = F)
 
 cat(paste0(' \n', 'On the other hand, when k=4, the following assignments were made: \n'))
 
-kable(clusterCut4) %>% column_spec(1, bold = T, width = "5em") %>% kable_styling(bootstrap_options = "striped", full_width = F)
+kable(t(clusterCut4), row.names = NA, caption = "Cluster Assignment for each Participant | k=4") %>% column_spec(1, bold = T, width = "5em") %>% kable_styling(bootstrap_options = "striped", full_width = F)
 
 cat("\n")
 
