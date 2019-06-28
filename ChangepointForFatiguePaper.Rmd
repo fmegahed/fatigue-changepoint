@@ -1,8 +1,25 @@
 ---
-title: "Changepoint for Fatigue Paper"
+title: "Monitoring Worker Fatigue Using Wearable Devices: A Case Study to Detect Changes in Gait Parameters"
 author:  
-  - (Author[s] blinded for peer review)
-
+  - name: Amir Baghdadi
+    email: amirbagh@buffalo.edu
+    affiliation: Department of Mechanical & Aerospace Engineering, University at Buffalo, NY 14260
+  - name: Lora A. Cavuoto
+    email: loracavu@buffalo.edu
+    affiliation: Department of Industrial & Systems Engineering, University at Buffalo, NY 14260
+  - name: Allison Jones-Farmer
+    email: farmerl2@miamioh.edu
+    affiliation: Farmer School of Business, Miami University, OH 45056
+  - name: Steven E. Rigdon
+    email: steve.rigdon@slu.edu
+    affiliation: College for Public Health and Social Justice, Saint Louis University, MO 63103
+  - name: Ehsan T. Esfahani
+    email: ehsanesf@buffalo.edu
+    affiliation: Department of Mechanical & Aerospace Engineering, University at Buffalo, NY 14260
+  - name: Fadel M. Megahed
+    email: fmegahed@miamioh.edu
+    affiliation: Farmer School of Business, Miami University, OH 45056
+    footnote: Corresponding Author
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
   html_document:
@@ -47,12 +64,12 @@ p_load(R.matlab, plotly, extrafont, grDevices, ggpubr,
        ecp, dfphase1, 
        MALDIquant, TSclust, dtwclust,
        knitr, kableExtra, dplyr, data.table,
-       RColorBrewer)
+       RColorBrewer, grid, gridExtra)
 ```
 
 ## Feature Generation
 
-In the snippet below, we extract the 15 ".mat" files in the [GitHub repository](https://github.com/jqtcase/fatigue-changepoint/tree/master/Data/Raw/) (where we loaded the data to allow for the reproduction of our work). Note that these files were originally produced in [Baghdadi et al., 2018](https://www.tandfonline.com/doi/abs/10.1080/00140139.2018.1442936?). Then, we perform several transformation steps: (a) extracting the data for the first three columns in the matlab arrays; and (b) computing three kinematic features from the data corresponding to these columns. Due to the differences between Matlab and R, this requires two nested *for* loops. The outer loop increments over the number of subjects, while the inner loop increments based on the different number of rows of data for each subject. Please see the comments within the code chunk for more details. 
+In the snippet below, we extract the 15 ".mat" files in the [GitHub repository](https://github.com/fmegahed/fatigue-changepoint/tree/master/Data/Raw/) (where we loaded the data to allow for the reproduction of our work). Note that these files were originally produced in [Baghdadi et al., 2018](https://www.tandfonline.com/doi/abs/10.1080/00140139.2018.1442936?). Then, we perform several transformation steps: (a) extracting the data for the first three columns in the matlab arrays; and (b) computing three kinematic features from the data corresponding to these columns. Due to the differences between Matlab and R, this requires two nested *for* loops. The outer loop increments over the number of subjects, while the inner loop increments based on the different number of rows of data for each subject. Please see the comments within the code chunk for more details. 
 
 ```{r load_data, cache=TRUE}
 num_subjects <- seq(1, 15)
@@ -132,7 +149,7 @@ rm(raw_data, raw_data_size, i, j, num_rows,
 save.image(file = "./Data/RGenerated/FeatureGeneration.RData")
 ```
 
-Based on the analysis above, there are **three observations** to be made. *First*, we scaled the stride length and height based on the subject's height. This in essence allows us to capture the steps as a percentage of the person's height. This reduces the between subject variablity in the data and is supported by the seminal work of [Oberg et al., 1993](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.473.947&rep=rep1&type=pdf). *Second*, we showed the first six rows from Subject 4 to provide the reader with some insights into the sampling frequeny (after the preprocessing done in [Baghdadi et al. 2018](https://www.tandfonline.com/doi/abs/10.1080/00140139.2018.1442936)). Note that the kinematic features are computed from the sensor channels provided in their paper. *Third*, we saved the generated data into an R.data file, which can be accessed by clicking on:  [FeatureGeneration.RData](https://github.com/jqtcase/fatigue-changepoint/tree/master/Data/RGenerated/FeatureGeneration.RData). We hope that this saved data allows other researchers to reproduce and/or build on our work.
+Based on the analysis above, there are **three observations** to be made. *First*, we scaled the stride length and height based on the subject's height. This in essence allows us to capture the steps as a percentage of the person's height. This reduces the between subject variablity in the data and is supported by the seminal work of [Oberg et al., 1993](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.473.947&rep=rep1&type=pdf). *Second*, we showed the first six rows from Subject 4 to provide the reader with some insights into the sampling frequeny (after the preprocessing done in [Baghdadi et al. 2018](https://www.tandfonline.com/doi/abs/10.1080/00140139.2018.1442936)). Note that the kinematic features are computed from the sensor channels provided in their paper. *Third*, we saved the generated data into an R.data file, which can be accessed by clicking on:  [FeatureGeneration.RData](https://github.com/fmegahed/fatigue-changepoint/tree/master/Data/RGenerated/FeatureGeneration.RData). We hope that this saved data allows other researchers to reproduce and/or build on our work.
 
 
 
@@ -248,7 +265,7 @@ save(subject1_features_norm, subject2_features_norm, subject3_features_norm,
      file = "./Data/RGenerated/ScaledData.RData")  
 ```
 
-The results from rescaling the data can be found at [ScaledData.RData](https://github.com/jqtcase/fatigue-changepoint/tree/master/Data/RGenerated/).
+The results from rescaling the data can be found at [ScaledData.RData](https://github.com/fmegahed/fatigue-changepoint/tree/master/Data/RGenerated/).
 
 ## The Application of the Median Filter {.tabset .tabset-fade}
 From the Signal Processing and Ergonomics Literature, the the [median filter](https://onlinelibrary.wiley.com/doi/book/10.1002/9780470740156) is a standard approach for smoothing sensor-based data. There are three common implementations of the *median filtering approach*, which are:  
@@ -390,7 +407,7 @@ save(subject1_cusum_norm, subject2_cusum_norm, subject3_cusum_norm,
      file = "./Data/RGenerated/NormCusumData.RData")
 ```
 
-The rescaled and then median filtered data can be found at: [NormMedianFilteredData.RData](https://github.com/jqtcase/fatigue-changepoint/tree/master/Data/RGenerated/). Additionally, the cusum of this data (which we use for interpretation) can be found at: [NormCusumData.RData](https://github.com/jqtcase/fatigue-changepoint/tree/master/Data/RGenerated/)
+The rescaled and then median filtered data can be found at: [NormMedianFilteredData.RData](https://github.com/fmegahed/fatigue-changepoint/tree/master/Data/RGenerated/). Additionally, the cusum of this data (which we use for interpretation) can be found at: [NormCusumData.RData](https://github.com/fmegahed/fatigue-changepoint/tree/master/Data/RGenerated/)
 
 
 ---
@@ -473,7 +490,7 @@ To apply the *ecp approach of [Matteson and James (2014)](https://amstat.tandfon
              length(changepoints_medianf[[i]]),
              '. These changepoints are located at the following percent time(s) from start: ',
              paste(round(changepoints_medianf[[i]], digits = 2), collapse = ", "),
-             '. The results from the analysis above can be found at: <a href="https://github.com/jqtcase/fatigue-changepoint/tree/master/Data/RGenerated/ECPChangePointsMFData.RData">ECPChangePointsMFData.RData</a>. </p> </source>')
+             '. The results from the analysis above can be found at: <a href="https://github.com/fmegahed/fatigue-changepoint/tree/master/Data/RGenerated/ECPChangePointsMFData.RData">ECPChangePointsMFData.RData</a>. </p> </source>')
       )
   cat('\n \n')
   }
@@ -483,7 +500,7 @@ save(changepoints_medianf,
 
 
 ## Comparing the ECP Changepoints with Participants' Subjective Ratings  
-Throughout the experiments, participants provided their subjective ratings every 10 minutes. The ratings were based on the [Borg 6-20 RPE scale](https://www.tandfonline.com/doi/abs/10.1080/00140139.2018.1442936). Recent literature on fatigue detection suggests that a rating of 13 can be used to estimate the onset of fatigue (see [Maman et al. (2017)](https://www.sciencedirect.com/science/article/pii/S0003687017300261) for a detailed analysis). The subjective ratings for each participant can be accessed at: [subjective-ratings-raw](https://github.com/jqtcase/fatigue-changepoint/tree/master/Data/Raw).
+Throughout the experiments, participants provided their subjective ratings every 10 minutes. The ratings were based on the [Borg 6-20 RPE scale](https://www.tandfonline.com/doi/abs/10.1080/00140139.2018.1442936). Recent literature on fatigue detection suggests that a rating of 13 can be used to estimate the onset of fatigue (see [Maman et al. (2017)](https://www.sciencedirect.com/science/article/pii/S0003687017300261) for a detailed analysis). The subjective ratings for each participant can be accessed at: [subjective-ratings-raw](https://github.com/fmegahed/fatigue-changepoint/tree/master/Data/Raw).
 
 
 ### Plots with the Median Filtered Data and their ECP Changepoints {.tabset .tabset-fade}
@@ -706,11 +723,11 @@ kable(t(clusterCut4), row.names = NA, caption = "Cluster Assignment for each Par
 # a R file used to create a plot based on clusterCut4
 # See the file on GitHub Repo for more information
 # Not directly included in the RMD since it is long
-source('clusters.R')
+source('Secondary Analysis/clusters.R')
 
 ```
 
-The results from this analysis are saved at The subjective ratings for each participant can be accessed at: [MFClusters.RData](https://github.com/jqtcase/fatigue-changepoint/tree/master/Data/RGenerated).
+The results from this analysis are saved at The subjective ratings for each participant can be accessed at: [MFClusters.RData](https://github.com/fmegahed/fatigue-changepoint/tree/master/Data/RGenerated).
 
 ## Multivariate Time Series Clustering based on the CUSUM of the Scaled Sensor Data
 ```{r TS_Clust_multivar_cusum, cache=TRUE, fig.align='center', results= 'asis', out.width='100%', message=FALSE, warning=FALSE}
@@ -754,8 +771,8 @@ kable(t(clusterCut4), row.names = NA, caption = "Cluster Assignment for each Par
 # a R file used to create a plot based on clusterCut4
 # See the file on GitHub Repo for more information
 # Not directly included in the RMD since it is long
-source('clustersCUSUMs.R')
+source('Secondary Analysis/clustersCUSUMs.R')
 
 ```
 
-The results from this analysis are saved at The subjective ratings for each participant can be accessed at: [CusumClusters.RData](https://github.com/jqtcase/fatigue-changepoint/tree/master/Data/RGenerated). 
+The results from this analysis are saved at The subjective ratings for each participant can be accessed at: [CusumClusters.RData](https://github.com/fmegahed/fatigue-changepoint/tree/master/Data/RGenerated). 
